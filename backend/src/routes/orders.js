@@ -23,8 +23,20 @@ router.post('/', async (req, res) => {
     }
   }
 
+  const client_email = String(b.client_email || '').trim().toLowerCase();
+
   const conn = await pool.getConnection();
   try {
+    if (client_email) {
+      const [dupe] = await conn.query(
+        'SELECT order_code FROM orders WHERE client_email = ? LIMIT 1',
+        [client_email]
+      );
+      if (dupe.length > 0) {
+        return res.status(409).json({ error: 'An order has already been placed with this email address.' });
+      }
+    }
+
     const order_code = await nextOrderCode(conn);
     const [result] = await conn.query(
       `INSERT INTO orders

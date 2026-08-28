@@ -1,6 +1,8 @@
 const BASE = import.meta.env.VITE_API_BASE || ''; // empty -> uses Vite proxy
 const TOKEN_KEY = 'cg_admin_token';
 
+export const assetUrl = (p) => (p ? `${BASE}${p}` : '');
+
 export const adminAuth = {
   getToken: () => localStorage.getItem(TOKEN_KEY) || '',
   setToken: (token) => localStorage.setItem(TOKEN_KEY, token),
@@ -9,9 +11,10 @@ export const adminAuth = {
 
 async function request(path, options = {}) {
   const token = adminAuth.getToken();
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(`${BASE}/api${path}`, {
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     ...options,
@@ -34,6 +37,10 @@ export const api = {
 
   // gifts
   gifts: () => request('/gifts'),
+  adminGifts: () => request('/gifts/admin'),
+  createGift: (formData) => request('/gifts', { method: 'POST', body: formData }),
+  updateGift: (id, formData) => request(`/gifts/${id}`, { method: 'PUT', body: formData }),
+  deleteGift: (id) => request(`/gifts/${id}`, { method: 'DELETE' }),
 
   // orders
   createOrder: (payload) =>

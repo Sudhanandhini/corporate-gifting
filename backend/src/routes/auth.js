@@ -74,7 +74,14 @@ router.post('/verify-otp', async (req, res) => {
   }
 
   await pool.query('UPDATE otp_codes SET consumed = 1 WHERE id = ?', [rows[0].id]);
-  res.json({ verified: true, email });
+
+  const [existing] = await pool.query(
+    `SELECT order_code, gift_name, recipient_name, phone, city, state, status
+       FROM orders WHERE client_email = ? ORDER BY id DESC LIMIT 1`,
+    [email]
+  );
+
+  res.json({ verified: true, email, existingOrder: existing[0] || null });
 });
 
 export default router;

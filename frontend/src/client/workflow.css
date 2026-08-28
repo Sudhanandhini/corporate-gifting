@@ -1,5 +1,5 @@
 .wf-page { min-height: 100%; padding: 40px 20px 64px; }
-.wf-shell { max-width: 720px; margin: 0 auto; }
+.wf-shell { max-width: 1000px; margin: 0 auto; }
 
 .wf-head { text-align: center; margin-bottom: 28px; }
 .wf-head .pill { margin-bottom: 22px; }
@@ -12,6 +12,9 @@
 .wf-adminlink:hover { color: var(--gold-600); border-color: var(--gold-500); }
 
 .wf-card { padding: 30px; margin-bottom: 26px; }
+.wf-contact { text-align: center; color: var(--muted); font-size: 13px; margin: -12px 0 26px; }
+.wf-contact a { color: var(--gold-600); font-weight: 600; }
+.wf-contact a:hover { text-decoration: underline; }
 .wf-step-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 22px; }
 .wf-step-id { display: flex; gap: 14px; align-items: center; }
 .wf-step-icon {
@@ -38,13 +41,16 @@
 /* gift grid */
 .gift-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .gift-tile { border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: center; }
-.gift-thumb { height: 66px; border-radius: 10px; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; margin-bottom: 12px; }
-.gift-name { font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+.gift-thumb { height: 120px; border-radius: 10px; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; margin-bottom: 12px; overflow: hidden; }
+.gift-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gift-name { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+.gift-desc { color: var(--muted); font-size: 13px; margin: 0 0 14px; line-height: 1.4; }
 .gift-tile.sel { border-color: var(--gold-500); box-shadow: 0 0 0 3px var(--gold-100); }
 
 /* selected gift detail */
 .sel-detail { display: grid; grid-template-columns: 150px 1fr; gap: 20px; align-items: start; }
-.sel-thumb { height: 130px; border-radius: 12px; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; }
+.sel-thumb { height: 130px; border-radius: 12px; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; overflow: hidden; }
+.sel-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .qty { display: inline-flex; align-items: center; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
 .qty button { width: 44px; height: 44px; border: none; background: #fff; font-size: 20px; cursor: pointer; color: var(--navy-ink); }
 .qty button:hover { background: #f4f6fa; }

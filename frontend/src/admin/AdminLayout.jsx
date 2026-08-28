@@ -1,8 +1,12 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
-import { IconBriefcase, IconGrid, IconUsers, IconReceipt, IconLogout } from '../lib/icons.jsx';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { IconBriefcase, IconGrid, IconUsers, IconReceipt, IconGift, IconLogout } from '../lib/icons.jsx';
+import { adminAuth } from '../lib/api.js';
 import './admin.css';
 
 export default function AdminLayout() {
+  const navigate = useNavigate();
+  const logout = () => { adminAuth.clear(); navigate('/admin/login', { replace: true }); };
+
   return (
     <div className="admin">
       <aside className="side">
@@ -21,9 +25,14 @@ export default function AdminLayout() {
         <NavLink to="/admin/orders" className="side-link">
           <span className="ico"><IconReceipt width={18} height={18} /></span> Orders <span className="n">03</span>
         </NavLink>
+        <NavLink to="/admin/gifts" className="side-link">
+          <span className="ico"><IconGift width={18} height={18} /></span> Gifts <span className="n">04</span>
+        </NavLink>
 
         <div className="side-foot">
-          <Link to="/"><IconLogout width={18} height={18} /> Exit to Client</Link>
+          <button type="button" onClick={logout} className="side-logout">
+            <IconLogout width={18} height={18} /> Logout
+          </button>
         </div>
       </aside>
 

@@ -3,7 +3,7 @@ const S = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: '
 
 export const IconMail = (p) => (<svg {...S} {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>);
 export const IconShield = (p) => (<svg {...S} {...p}><path d="M12 3 4 6v6c0 4 3.5 7 8 9 4.5-2 8-5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>);
-export const IconGift = (p) => (<svg {...S} {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8S10 3 7.5 4 9 8 12 8s2.5-4.5 4.5-4S12 8 12 8z"/></svg>);
+export const IconGift = (p) => (<svg {...S} {...p}><rect x="3" y="8" width="32" height="32" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8S10 3 7.5 4 9 8 12 8s2.5-4.5 4.5-4S12 8 12 8z"/></svg>);
 export const IconPin = (p) => (<svg {...S} {...p}><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>);
 export const IconCheck = (p) => (<svg {...S} {...p}><path d="m5 12 5 5 9-11"/></svg>);
 export const IconCheckCircle = (p) => (<svg {...S} {...p}><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>);

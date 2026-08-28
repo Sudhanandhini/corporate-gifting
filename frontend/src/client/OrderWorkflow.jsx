@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../lib/api.js';
+import { api, assetUrl } from '../lib/api.js';
 import {
   IconMail, IconShield, IconGift, IconPin, IconCheck, IconCheckCircle,
 } from '../lib/icons.jsx';
@@ -24,6 +24,7 @@ export default function OrderWorkflow() {
   const [selected, setSelected] = useState(null);
   const [delivery, setDelivery] = useState(emptyDelivery);
   const [order, setOrder] = useState(null);
+  const [alreadyPlaced, setAlreadyPlaced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,7 +32,7 @@ export default function OrderWorkflow() {
 
   return (
     <div className="wf-page">
-      <Link to="/admin" className="wf-adminlink">Admin →</Link>
+      {/* <Link to="/admin" className="wf-adminlink">Admin →</Link> */}
       <div className="wf-shell">
         <header className="wf-head">
           <span className="pill">Process Overview</span>
@@ -74,10 +75,16 @@ export default function OrderWorkflow() {
               if (code.length !== 5) { setError('Enter the 5-digit code.'); return; }
               setBusy(true);
               try {
-                await api.verifyOtp(email, code);
-                const list = await api.gifts();
-                setGifts(list);
-                setStep(2);
+                const r = await api.verifyOtp(email, code);
+                if (r.existingOrder) {
+                  setOrder(r.existingOrder);
+                  setAlreadyPlaced(true);
+                  setStep(6);
+                } else {
+                  const list = await api.gifts();
+                  setGifts(list);
+                  setStep(2);
+                }
               } catch (e) { setError('Invalid or expired code.'); } finally { setBusy(false); }
             }}
           />
@@ -123,7 +130,15 @@ export default function OrderWorkflow() {
                   gift_id: selected.id, gift_name: selected.name, quantity: 1,
                   ...delivery,
                 });
-                setOrder(created);
+                setOrder({
+                  gift_name: selected.name,
+                  recipient_name: delivery.recipient_name,
+                  phone: delivery.phone,
+                  city: delivery.city,
+                  state: delivery.state,
+                  status: created.status || 'Submitted',
+                });
+                setAlreadyPlaced(false);
                 setStep(6);
               } catch (e) { setError(e.message); } finally { setBusy(false); }
             }}
@@ -131,13 +146,13 @@ export default function OrderWorkflow() {
         )}
 
         {step === 6 && order && (
-          <StepThankYou
-            order={order} gift={selected} delivery={delivery}
-            onRestart={() => {
-              setStep(0); setEmail(''); setOtp(['', '', '', '', '']); setDevCode('');
-              setSelected(null); setQty(1); setDelivery(emptyDelivery); setOrder(null); setError('');
-            }}
-          />
+          <StepThankYou order={order} alreadyPlaced={alreadyPlaced} />
+        )}
+
+        {(step === 0 || step === 1) && (
+          <p className="wf-contact">
+            Can&apos;t log in? Contact <a href="mailto:contact@gift.com">contact@gift.com</a>
+          </p>
         )}
 
         <Rail activeIdx={railIdx} />
@@ -231,8 +246,13 @@ function StepGiftCollection({ gifts, onSelect }) {
       <div className="gift-grid mt-lg">
         {gifts.map((g) => (
           <div className="gift-tile" key={g.id}>
-            <div className="gift-thumb"><IconGift width={26} height={26} /></div>
+            <div className="gift-thumb">
+              {g.image_url
+                ? <img src={assetUrl(g.image_url)} alt={g.name} />
+                : <IconGift width={26} height={26} />}
+            </div>
             <div className="gift-name">{g.name}</div>
+            <p className="gift-desc">{g.description}</p>
             <button className="btn btn-navy" onClick={() => onSelect(g)}>Select Gift</button>
           </div>
         ))}
@@ -247,7 +267,11 @@ function StepSelectGift({ gift, onConfirm, onBack }) {
     <section className="card wf-card">
       <StepHead icon={<IconGift />} kicker="Step 04" name="Select Your Gift" num="04" />
       <div className="sel-detail">
-        <div className="sel-thumb"><IconGift width={40} height={40} /></div>
+        <div className="sel-thumb">
+          {gift.image_url
+            ? <img src={assetUrl(gift.image_url)} alt={gift.name} />
+            : <IconGift width={40} height={40} />}
+        </div>
         <div>
           <h3 style={{ margin: '0 0 6px' }}>{gift.name}</h3>
           <p className="muted" style={{ marginTop: 0 }}>{gift.description}</p>
@@ -321,27 +345,27 @@ function StepConfirm({ gift, delivery, onSubmit, onEdit, busy, error }) {
 }
 
 /* ---------- Step 7: Thank You ---------- */
-function StepThankYou({ order, gift, delivery, onRestart }) {
+function StepThankYou({ order, alreadyPlaced }) {
   return (
     <section className="card wf-card">
-      <StepHead icon={<IconCheck />} kicker="Step 07" name="Thank You!" num="07" />
+      <StepHead icon={<IconCheck />} kicker="Step 07" name={alreadyPlaced ? 'Order Already Placed' : 'Thank You!'} num="07" />
       <div className="ty-center">
         <div className="ty-badge"><IconCheck width={34} height={34} /></div>
-        <p className="muted" style={{ margin: 0 }}>Your gift order has been successfully submitted.</p>
+        <p className="muted" style={{ margin: 0 }}>
+          {alreadyPlaced
+            ? 'This email has already been used to place an order. Only one gift order is allowed per email.'
+            : 'Your gift order has been successfully submitted.'}
+        </p>
       </div>
-      <div className="ty-order">Order ID: #{order.order_code}</div>
       <div className="review-list">
-        <Row k="Product" v={gift.name} />
-        <Row k="Recipient" v={delivery.recipient_name} />
-        <Row k="Phone" v={delivery.phone} />
-        <Row k="Delivery" v={`${delivery.city}, ${delivery.state}`} />
+        <Row k="Product" v={order.gift_name} />
+        <Row k="Recipient" v={order.recipient_name} />
+        <Row k="Phone" v={order.phone} />
+        <Row k="Delivery" v={`${order.city}, ${order.state}`} />
       </div>
       <div style={{ marginTop: 16 }}>
-        <span className="status completed">Order Submitted</span>
+        <span className={`status ${order.status.toLowerCase()}`}>{order.status}</span>
       </div>
-      <button className="btn btn-outline" style={{ width: '100%', marginTop: 18 }} onClick={onRestart}>
-        Place Another Order
-      </button>
     </section>
   );
 }
