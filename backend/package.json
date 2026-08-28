@@ -1,0 +1,19 @@
+{
+  "name": "corporate-gifting-server",
+  "version": "1.0.0",
+  "description": "Node + Express + MySQL API for the Corporate Gifting platform",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "db:setup": "node src/setupDb.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0",
+    "nodemailer": "^9.0.6"
+  }
+}
