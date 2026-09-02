@@ -8,7 +8,7 @@ router.get('/stats', async (_req, res) => {
   const [[emp]] = await pool.query('SELECT COUNT(*) AS c FROM employees');
   const [[tot]] = await pool.query('SELECT COUNT(*) AS c FROM orders');
   const [[pending]] = await pool.query(
-    "SELECT COUNT(*) AS c FROM orders WHERE status <> 'Completed'"
+    "SELECT COUNT(*) AS c FROM orders WHERE status NOT IN ('Completed', 'Cancelled')"
   );
   const [[done]] = await pool.query(
     "SELECT COUNT(*) AS c FROM orders WHERE status = 'Completed'"

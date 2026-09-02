@@ -45,8 +45,8 @@ export const api = {
   // orders
   createOrder: (payload) =>
     request('/orders', { method: 'POST', body: JSON.stringify(payload) }),
-  orders: ({ search = '', status = '', date = '' } = {}) =>
-    request(`/orders?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}&date=${encodeURIComponent(date)}`),
+  orders: ({ search = '', status = '', dateFrom = '', dateTo = '' } = {}) =>
+    request(`/orders?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}&dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`),
   order: (id) => request(`/orders/${id}`),
   updateOrder: (id, status) =>
     request(`/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
@@ -61,4 +61,10 @@ export const api = {
 
   // dashboard
   stats: () => request('/dashboard/stats'),
+
+  // reports
+  reports: () => request('/reports'),
+  exportOrders: (filters) =>
+    request('/reports/export', { method: 'POST', body: JSON.stringify(filters) }),
+  deleteReport: (id) => request(`/reports/${id}`, { method: 'DELETE' }),
 };

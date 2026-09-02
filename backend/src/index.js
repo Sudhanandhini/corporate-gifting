@@ -12,6 +12,7 @@ import giftRoutes from './routes/gifts.js';
 import employeeRoutes from './routes/employees.js';
 import orderRoutes from './routes/orders.js';
 import dashboardRoutes from './routes/dashboard.js';
+import reportRoutes from './routes/reports.js';
 import { requireAdmin } from './middleware/requireAdmin.js';
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/gifts', giftRoutes);
 app.use('/api/employees', requireAdmin, employeeRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/dashboard', requireAdmin, dashboardRoutes);
+app.use('/api/reports', requireAdmin, reportRoutes);
 
 // Centralised error handler
 app.use((err, _req, res, _next) => {

@@ -7,6 +7,7 @@ import Dashboard from './admin/Dashboard.jsx';
 import Employees from './admin/Employees.jsx';
 import Orders from './admin/Orders.jsx';
 import Gifts from './admin/Gifts.jsx';
+import Reports from './admin/Reports.jsx';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="employees" element={<Employees />} />
           <Route path="orders" element={<Orders />} />
           <Route path="gifts" element={<Gifts />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
       </Route>
 

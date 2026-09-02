@@ -3,13 +3,19 @@
 
 .wf-head { text-align: center; margin-bottom: 28px; }
 .wf-head .pill { margin-bottom: 22px; }
-.wf-title { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 8px; }
+.wf-title { font-size: 30px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 8px; display: flex;
+  align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 10px; }
 .wf-title .gold { color: var(--gold-600); }
+.wf-logo { height: 32px; width: auto; }
 .wf-sub { color: var(--muted); font-size: 14px; margin: 0; }
 .wf-adminlink { position: fixed; top: 18px; right: 22px; font-size: 12px; font-weight: 700;
   letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-strong);
   padding: 7px 14px; border-radius: 999px; background: #fff; }
 .wf-adminlink:hover { color: var(--gold-600); border-color: var(--gold-500); }
+.wf-logout { position: fixed; top: 18px; right: 22px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line-strong); padding: 7px 14px; border-radius: 999px; background: #fff; cursor: pointer; }
+.wf-logout:hover { color: var(--gold-600); border-color: var(--gold-500); }
 
 .wf-card { padding: 30px; margin-bottom: 26px; }
 .wf-contact { text-align: center; color: var(--muted); font-size: 13px; margin: -12px 0 26px; }
@@ -41,16 +47,42 @@
 /* gift grid */
 .gift-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .gift-tile { border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: center; }
-.gift-thumb { width: 270px; height: 300px; max-width: 100%; border-radius: 10px; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; margin: 0 auto 12px; overflow: hidden; }
-.gift-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gift-thumb { width: 100%; aspect-ratio: 9 / 10; max-height: 300px; border-radius: 10px; margin: 0 auto 12px; }
 .gift-name { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
 .gift-desc { color: var(--muted); font-size: 13px; margin: 0 0 14px; line-height: 1.4; }
 .gift-tile.sel { border-color: var(--gold-500); box-shadow: 0 0 0 3px var(--gold-100); }
+.gift-viewmore { display: block; font-size: 13px; font-weight: 700; color: var(--gold-600); cursor: pointer; margin: 0 0 12px; }
+.gift-viewmore:hover { text-decoration: underline; }
 
 /* selected gift detail */
-.sel-detail { display: grid; grid-template-columns: 150px 1fr; gap: 20px; align-items: start; }
-.sel-thumb { height: 130px; border-radius: 12px; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; overflow: hidden; }
-.sel-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.sel-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+.sel-thumb { height: 450px; border-radius: 12px; }
+
+/* image slider (gift thumb, detail view, and preview modal) */
+.img-slider { position: relative; overflow: hidden; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; }
+.img-slider img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-slider-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.9); border: 1px solid var(--line-strong); color: var(--navy-ink);
+  display: grid; place-items: center; font-size: 18px; line-height: 1; cursor: pointer; padding: 0;
+}
+.img-slider-nav.prev { left: 8px; }
+.img-slider-nav.next { right: 8px; }
+.img-slider-nav:hover { background: #fff; border-color: var(--gold-500); }
+.img-slider-dots { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 6px; }
+.img-slider-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.7); cursor: pointer; }
+.img-slider-dot.active { background: #fff; width: 16px; border-radius: 4px; }
+
+/* gift preview modal ("View More") */
+.wf-modal-bg { position: fixed; inset: 0; background: rgba(37,60,128,.5); display: grid; place-items: center; z-index: 60; padding: 20px; }
+.wf-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 580px; padding: 50px; box-shadow: 0 20px 50px rgba(37,60,128,.25); position: relative; max-height: 90vh; overflow-y: auto; }
+.wf-modal-close {
+  position: absolute; top: 14px; right: 14px; z-index: 1; width: 30px; height: 30px; border-radius: 50%; border: none;
+  background: #f1f3f8; color: var(--navy-ink); font-size: 18px; line-height: 1; cursor: pointer; display: grid; place-items: center;
+  box-shadow: 0 1px 4px rgba(37,60,128,.2);
+}
+.wf-modal-close:hover { background: #e6e9f0; }
+.gift-preview-slider { width: 100%; height: 260px; border-radius: 12px; }
 .qty { display: inline-flex; align-items: center; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
 .qty button { width: 44px; height: 44px; border: none; background: #fff; font-size: 20px; cursor: pointer; color: var(--navy-ink); }
 .qty button:hover { background: #f4f6fa; }
@@ -79,6 +111,7 @@
 .rail-node.active .rail-label, .rail-node.done .rail-label { color: var(--navy-ink); }
 
 .btn-row { display: flex; gap: 12px; }
+
 .btn-row .btn { flex: 1; width: auto; }
 
 @media (max-width: 900px) {
@@ -89,4 +122,24 @@
   .wf-row, .gift-grid, .sel-detail { grid-template-columns: 1fr; }
   .rail-label { display: none; }
   .otp-box { width: 44px; height: 50px; font-size: 20px; }
+  .wf-card { padding: 20px; }
+  .sel-thumb { height: 220px; }
+  .wf-modal { padding: 22px 18px; max-width: 100%; }
+  .gift-preview-slider { height: 200px; }
+  .otp-row { gap: 8px; }
+}
+
+/* The fixed Logout / Admin pill sits above the centered header on wide
+   screens with room to spare; below ~480px the centered "Process Overview"
+   pill grows wide enough to run under it, so push the header down instead. */
+@media (max-width: 480px) {
+  .wf-adminlink, .wf-logout { padding: 6px 12px; font-size: 10px; }
+  .wf-head { padding-top: 42px; }
+}
+
+@media (max-width: 380px) {
+  .wf-title { font-size: 24px; }
+  .wf-logo { height: 26px; }
+  .otp-box { width: 38px; height: 46px; font-size: 18px; }
+  .img-slider-nav { width: 26px; height: 26px; font-size: 16px; }
 }

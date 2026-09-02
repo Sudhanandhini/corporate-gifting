@@ -23,6 +23,17 @@ CREATE TABLE IF NOT EXISTS gifts (
   active      TINYINT(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB;
 
+-- Extra gallery images per gift, shown in the client-side image slider
+-- (in addition to the single "cover" gifts.image_url).
+CREATE TABLE IF NOT EXISTS gift_images (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  gift_id     INT NOT NULL,
+  image_url   VARCHAR(255) NOT NULL,
+  sort_order  INT NOT NULL DEFAULT 0,
+  CONSTRAINT fk_gift_images_gift FOREIGN KEY (gift_id) REFERENCES gifts(id) ON DELETE CASCADE,
+  INDEX idx_gift_images_gift (gift_id)
+) ENGINE=InnoDB;
+
 -- One-time passwords for the mandatory email-verification step.
 CREATE TABLE IF NOT EXISTS otp_codes (
   id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -44,14 +55,29 @@ CREATE TABLE IF NOT EXISTS orders (
   recipient_name VARCHAR(160) NOT NULL,
   client_email   VARCHAR(160) NOT NULL,                 -- verified email that placed the order
   phone          VARCHAR(40)  NOT NULL,
+  employee_id    VARCHAR(40)  NULL,
+  entity         VARCHAR(160) NULL,
   address        VARCHAR(255) NOT NULL,
   city           VARCHAR(120) NOT NULL,
   state          VARCHAR(120) NOT NULL,
   pincode        VARCHAR(20)  NOT NULL,
   gift_message   VARCHAR(255) NULL,
-  status         ENUM('Submitted','Processing','Completed') NOT NULL DEFAULT 'Submitted',
+  status         ENUM('Submitted','Processing','Completed','Cancelled') NOT NULL DEFAULT 'Submitted',
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_orders_gift FOREIGN KEY (gift_id) REFERENCES gifts(id) ON DELETE SET NULL,
   INDEX idx_orders_status (status),
   INDEX idx_orders_created (created_at)
+) ENGINE=InnoDB;
+
+-- Generated Excel exports of the Orders list, listed in the admin Reports section.
+CREATE TABLE IF NOT EXISTS reports (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  filename      VARCHAR(255) NOT NULL,
+  file_url      VARCHAR(255) NOT NULL,
+  date_from     DATE NULL,
+  date_to       DATE NULL,
+  status_filter VARCHAR(20) NULL,
+  search_filter VARCHAR(160) NULL,
+  row_count     INT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

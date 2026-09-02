@@ -2,16 +2,23 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api, assetUrl } from '../lib/api.js';
 import {
-  IconMail, IconShield, IconGift, IconPin, IconCheck, IconCheckCircle,
+  IconMail, IconShield, IconGift, IconPin, IconCheck, IconCheckCircle, IconLogout,
 } from '../lib/icons.jsx';
+import logo from '../images/logo.png';
 import './workflow.css';
 
 const RAIL = ['Email', 'Verification', 'Gift', 'Details', 'Confirm', 'Complete'];
 // map wizard step (0-6) -> rail index (0-5)
 const railFor = (s) => [0, 1, 2, 2, 3, 4, 5][s];
 
+const ENTITIES = [
+  'Randstad Digital Private Limited',
+  'Randstad Enterprise Pvt. Ltd.',
+  'Randstad India Private Limited',
+];
+
 const emptyDelivery = {
-  recipient_name: '', phone: '', client_email: '',
+  recipient_name: '', phone: '', client_email: '', employee_id: '', entity: '',
   address: '', city: '', state: '', pincode: '', gift_message: '',
 };
 
@@ -56,6 +63,20 @@ export default function OrderWorkflow() {
 
   const railIdx = railFor(step);
 
+  const handleLogout = () => {
+    clearSession();
+    setStep(0);
+    setEmail('');
+    setOtp(['', '', '', '', '']);
+    setDevCode('');
+    setGifts([]);
+    setSelected(null);
+    setDelivery(emptyDelivery);
+    setOrder(null);
+    setAlreadyPlaced(false);
+    setError('');
+  };
+
   // Persist progress (sliding 15-min window) once the user has verified their email.
   useEffect(() => {
     if (step === 0) { clearSession(); return; }
@@ -73,11 +94,16 @@ export default function OrderWorkflow() {
   return (
     <div className="wf-page">
       {/* <Link to="/admin" className="wf-adminlink">Admin →</Link> */}
+      {step >= 2 && step <= 5 && (
+        <button type="button" className="wf-logout" onClick={handleLogout}>
+          <IconLogout width={16} height={16} /> Logout
+        </button>
+      )}
       <div className="wf-shell">
         <header className="wf-head">
           <span className="pill">Process Overview</span>
           <h1 className="wf-title">
-            Corporate Gifting <span className="gold">Client Order Workflow</span>
+            <img src={logo} alt="Randstad" className="wf-logo" /> <span className="gold">Client Order Workflow</span>
           </h1>
           <p className="wf-sub">
             Secure Email Verification → Gift Selection → Recipient Details → Confirmation → Order Completion
@@ -151,7 +177,7 @@ export default function OrderWorkflow() {
             onBack={() => setStep(3)}
             onReview={() => {
               setError('');
-              const req = ['recipient_name', 'phone', 'address', 'city', 'state', 'pincode'];
+              const req = ['recipient_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
               if (req.some((f) => !delivery[f].trim())) { setError('Please fill in all required (*) fields.'); return; }
               setStep(5);
             }}
@@ -189,11 +215,9 @@ export default function OrderWorkflow() {
           <StepThankYou order={order} alreadyPlaced={alreadyPlaced} />
         )}
 
-        {(step === 0 || step === 1) && (
-          <p className="wf-contact">
-            Can&apos;t log in? Contact <a href="mailto:contact@gift.com">contact@gift.com</a>
-          </p>
-        )}
+        <p className="wf-contact">
+          Can&apos;t log in? Contact <a href="mailto:contact@gift.com">contact@gift.com</a>
+        </p>
 
         <Rail activeIdx={railIdx} />
       </div>
@@ -277,8 +301,71 @@ function StepVerify({ otp, setOtp, onVerify, onResend, devCode, busy, error }) {
   );
 }
 
+/* ---------- reusable image slider ---------- */
+function giftImages(g) {
+  if (g?.images?.length) return g.images;
+  return g?.image_url ? [g.image_url] : [];
+}
+
+const SLIDE_INTERVAL_MS = 3000;
+
+function ImageSlider({ images, alt, className = '' }) {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (images.length <= 1 || paused) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % images.length), SLIDE_INTERVAL_MS);
+    return () => clearInterval(t);
+  }, [images.length, paused]);
+
+  if (!images.length) {
+    return <div className={`img-slider ${className}`}><IconGift width={26} height={26} /></div>;
+  }
+  const go = (delta) => (e) => {
+    e.stopPropagation();
+    setIdx((i) => (i + delta + images.length) % images.length);
+  };
+  return (
+    <div className={`img-slider ${className}`}
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+      <img src={assetUrl(images[idx])} alt={alt} />
+      {images.length > 1 && (
+        <>
+          <button type="button" className="img-slider-nav prev" onClick={go(-1)} aria-label="Previous image">‹</button>
+          <button type="button" className="img-slider-nav next" onClick={go(1)} aria-label="Next image">›</button>
+          <div className="img-slider-dots">
+            {images.map((_, i) => (
+              <span key={i} className={`img-slider-dot ${i === idx ? 'active' : ''}`}
+                onClick={(e) => { e.stopPropagation(); setIdx(i); }} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---------- gift preview modal (opened via "View More") ---------- */
+function GiftPreviewModal({ gift, onClose, onSelect }) {
+  return (
+    <div className="wf-modal-bg" onClick={onClose}>
+      <div className="wf-modal" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="wf-modal-close" onClick={onClose} aria-label="Close">×</button>
+        <ImageSlider images={giftImages(gift)} alt={gift.name} className="gift-preview-slider" />
+        <h3 style={{ margin: '16px 0 6px' }}>{gift.name}</h3>
+        <p className="muted" style={{ marginTop: 0 }}>{gift.description}</p>
+        <button className="btn btn-navy mt-lg" onClick={() => { onSelect(gift); onClose(); }}>
+          Select This Gift
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Step 3: Gift Collection ---------- */
 function StepGiftCollection({ gifts, onSelect }) {
+  const [previewGift, setPreviewGift] = useState(null);
   return (
     <section className="card wf-card">
       <StepHead icon={<IconGift />} kicker="Step 03" name="Gift Collection" num="03" />
@@ -286,17 +373,17 @@ function StepGiftCollection({ gifts, onSelect }) {
       <div className="gift-grid mt-lg">
         {gifts.map((g) => (
           <div className="gift-tile" key={g.id}>
-            <div className="gift-thumb">
-              {g.image_url
-                ? <img src={assetUrl(g.image_url)} alt={g.name}  />
-                : <IconGift width={26} height={26} />}
-            </div>
+            <ImageSlider images={giftImages(g)} alt={g.name} className="gift-thumb" />
             <div className="gift-name">{g.name}</div>
             <p className="gift-desc">{g.description}</p>
+            <span className="gift-viewmore" onClick={() => setPreviewGift(g)}>View More</span>
             <button className="btn btn-navy" onClick={() => onSelect(g)}>Select Gift</button>
           </div>
         ))}
       </div>
+      {previewGift && (
+        <GiftPreviewModal gift={previewGift} onClose={() => setPreviewGift(null)} onSelect={onSelect} />
+      )}
     </section>
   );
 }
@@ -307,11 +394,7 @@ function StepSelectGift({ gift, onConfirm, onBack }) {
     <section className="card wf-card">
       <StepHead icon={<IconGift />} kicker="Step 04" name="Select Your Gift" num="04" />
       <div className="sel-detail">
-        <div className="sel-thumb">
-          {gift.image_url
-            ? <img src={assetUrl(gift.image_url)} alt={gift.name} />
-            : <IconGift width={40} height={40} />}
-        </div>
+        <ImageSlider images={giftImages(gift)} alt={gift.name} className="sel-thumb" />
         <div>
           <h3 style={{ margin: '0 0 6px' }}>{gift.name}</h3>
           <p className="muted" style={{ marginTop: 0 }}>{gift.description}</p>
@@ -334,6 +417,13 @@ function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
       <div className="wf-row">
         <input className="field" placeholder="Full Name *" value={delivery.recipient_name} onChange={f('recipient_name')} />
         <input className="field" placeholder="Phone Number *" value={delivery.phone} onChange={f('phone')} />
+      </div>
+      <div className="wf-row" style={{ marginTop: 14 }}>
+        <input className="field" placeholder="Employee ID *" value={delivery.employee_id} onChange={f('employee_id')} />
+        <select className="field" value={delivery.entity} onChange={f('entity')}>
+          <option value="">Select Entity *</option>
+          {ENTITIES.map((e) => <option key={e} value={e}>{e}</option>)}
+        </select>
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
         <input className="field" placeholder="Email" value={delivery.client_email} onChange={f('client_email')} />
@@ -365,6 +455,8 @@ function StepConfirm({ gift, delivery, onSubmit, onEdit, busy, error }) {
         <Row k="Selected Gift" v={gift.name} />
         <Row k="Recipient Name" v={delivery.recipient_name} />
         <Row k="Phone Number" v={delivery.phone} />
+        <Row k="Employee ID" v={delivery.employee_id} />
+        <Row k="Entity" v={delivery.entity} />
         <Row k="Delivery Address" v={`${delivery.address}, ${delivery.city}`} />
         <Row k="State" v={delivery.state} />
         <Row k="Pincode" v={delivery.pincode} />
