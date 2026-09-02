@@ -15,20 +15,60 @@ const emptyDelivery = {
   address: '', city: '', state: '', pincode: '', gift_message: '',
 };
 
+// Keeps a verified client on their current step across a page refresh (or a
+// closed tab) for 15 minutes of inactivity, without re-verifying the OTP.
+const SESSION_KEY = 'cg_client_wf';
+const SESSION_TTL_MS = 15 * 60 * 1000;
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data.expiresAt || Date.now() > data.expiresAt) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return data;
+  } catch { return null; }
+}
+function saveSession(data) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ ...data, expiresAt: Date.now() + SESSION_TTL_MS })); }
+  catch { /* ignore */ }
+}
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+}
+
 export default function OrderWorkflow() {
-  const [step, setStep] = useState(0);
-  const [email, setEmail] = useState('');
+  const saved = loadSession();
+  const [step, setStep] = useState(saved?.step ?? 0);
+  const [email, setEmail] = useState(saved?.email ?? '');
   const [otp, setOtp] = useState(['', '', '', '', '']);
   const [devCode, setDevCode] = useState('');
   const [gifts, setGifts] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [delivery, setDelivery] = useState(emptyDelivery);
-  const [order, setOrder] = useState(null);
-  const [alreadyPlaced, setAlreadyPlaced] = useState(false);
+  const [selected, setSelected] = useState(saved?.selected ?? null);
+  const [delivery, setDelivery] = useState(saved?.delivery ?? emptyDelivery);
+  const [order, setOrder] = useState(saved?.order ?? null);
+  const [alreadyPlaced, setAlreadyPlaced] = useState(saved?.alreadyPlaced ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const railIdx = railFor(step);
+
+  // Persist progress (sliding 15-min window) once the user has verified their email.
+  useEffect(() => {
+    if (step === 0) { clearSession(); return; }
+    saveSession({ step, email, selected, delivery, order, alreadyPlaced });
+  }, [step, email, selected, delivery, order, alreadyPlaced]);
+
+  // Resuming on the gift-collection step after a refresh needs the list reloaded.
+  useEffect(() => {
+    if (step === 2 && gifts.length === 0) {
+      api.gifts().then(setGifts).catch((e) => setError(e.message));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="wf-page">
@@ -248,7 +288,7 @@ function StepGiftCollection({ gifts, onSelect }) {
           <div className="gift-tile" key={g.id}>
             <div className="gift-thumb">
               {g.image_url
-                ? <img src={assetUrl(g.image_url)} alt={g.name} />
+                ? <img src={assetUrl(g.image_url)} alt={g.name}  />
                 : <IconGift width={26} height={26} />}
             </div>
             <div className="gift-name">{g.name}</div>

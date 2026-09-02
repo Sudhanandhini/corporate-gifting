@@ -34,6 +34,11 @@ router.post('/request-otp', async (req, res) => {
     return res.status(400).json({ error: 'A valid email address is required.' });
   }
 
+  const [employee] = await pool.query('SELECT id FROM employees WHERE email = ?', [email]);
+  if (employee.length === 0) {
+    return res.status(404).json({ error: 'This email is not registered.' });
+  }
+
   const code = String(Math.floor(10000 + Math.random() * 90000)); // 5 digits
   const expires = new Date(Date.now() + TTL_MIN * 60 * 1000);
 
