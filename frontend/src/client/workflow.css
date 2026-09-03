@@ -110,9 +110,31 @@
 .rail-label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .rail-node.active .rail-label, .rail-node.done .rail-label { color: var(--navy-ink); }
 
-.btn-row { display: flex; gap: 12px; }
+.btn-row { display: flex; gap: 12px;  flex-direction: row;
+    /* flex-wrap: nowrap; */
+    /* align-content: center; */
+    justify-content: space-between;}
 
 .btn-row .btn { flex: 1; width: auto; }
+
+.btn-row .btn1 { display: flex; width: 300px;
+   /* display: inline-flex; */
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 15px;
+    padding: 13px 20px;
+    transition: filter .15s ease, background .15s ease;
+    /* background: #fff; */
+    /* color: var(--navy-ink); */
+    border: 1.5px solid var(--line-strong);
+  
+  }
 
 @media (max-width: 900px) {
   .gift-grid { grid-template-columns: repeat(2, 1fr); }

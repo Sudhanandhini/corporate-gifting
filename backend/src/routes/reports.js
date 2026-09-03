@@ -27,8 +27,8 @@ router.post('/export', ah(async (req, res) => {
   const search = String(body.search || '').trim();
 
   const [rows] = await pool.query(
-    `SELECT o.order_code, o.recipient_name, o.client_email, o.phone, o.employee_id, o.entity,
-            o.gift_name, o.quantity, o.address, o.city, o.state, o.pincode, o.gift_message,
+    `SELECT o.order_code, o.recipient_name, o.last_name, o.client_email, o.phone, o.employee_id, o.entity,
+            o.gift_name, o.quantity, o.address, o.city, o.state, o.pincode,
             o.status, o.created_at
        FROM orders o
       WHERE ${where}
@@ -41,6 +41,7 @@ router.post('/export', ah(async (req, res) => {
   sheet.columns = [
     { header: 'Order ID', key: 'order_code', width: 16 },
     { header: 'Recipient Name', key: 'recipient_name', width: 22 },
+    { header: 'Last Name', key: 'last_name', width: 18 },
     { header: 'Employee ID', key: 'employee_id', width: 16 },
     { header: 'Entity', key: 'entity', width: 30 },
     { header: 'Email', key: 'client_email', width: 26 },
@@ -51,7 +52,6 @@ router.post('/export', ah(async (req, res) => {
     { header: 'City', key: 'city', width: 16 },
     { header: 'State', key: 'state', width: 16 },
     { header: 'Pincode', key: 'pincode', width: 12 },
-    { header: 'Gift Message', key: 'gift_message', width: 24 },
     { header: 'Status', key: 'status', width: 14 },
     { header: 'Order Date', key: 'created_at', width: 18 },
   ];

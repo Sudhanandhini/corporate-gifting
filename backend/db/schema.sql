@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS orders (
   gift_name      VARCHAR(120) NOT NULL,
   quantity       INT NOT NULL DEFAULT 1,
   recipient_name VARCHAR(160) NOT NULL,
+  last_name      VARCHAR(160) NULL,
   client_email   VARCHAR(160) NOT NULL,                 -- verified email that placed the order
   phone          VARCHAR(40)  NOT NULL,
   employee_id    VARCHAR(40)  NULL,

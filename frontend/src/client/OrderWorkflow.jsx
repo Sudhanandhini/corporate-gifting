@@ -18,8 +18,8 @@ const ENTITIES = [
 ];
 
 const emptyDelivery = {
-  recipient_name: '', phone: '', client_email: '', employee_id: '', entity: '',
-  address: '', city: '', state: '', pincode: '', gift_message: '',
+  recipient_name: '', last_name: '', phone: '', client_email: '', employee_id: '', entity: '',
+  address: '', city: '', state: '', pincode: '',
 };
 
 // Keeps a verified client on their current step across a page refresh (or a
@@ -103,7 +103,7 @@ export default function OrderWorkflow() {
         <header className="wf-head">
           <span className="pill">Process Overview</span>
           <h1 className="wf-title">
-            <img src={logo} alt="Randstad" className="wf-logo" /> <span className="gold">Client Order Workflow</span>
+            <img src={logo} alt="Randstad" className="wf-logo" /> <span className="gold">Seasonal Gifts 2026</span>
           </h1>
           <p className="wf-sub">
             Secure Email Verification → Gift Selection → Recipient Details → Confirmation → Order Completion
@@ -177,7 +177,7 @@ export default function OrderWorkflow() {
             onBack={() => setStep(3)}
             onReview={() => {
               setError('');
-              const req = ['recipient_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
+              const req = ['recipient_name', 'last_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
               if (req.some((f) => !delivery[f].trim())) { setError('Please fill in all required (*) fields.'); return; }
               setStep(5);
             }}
@@ -401,8 +401,8 @@ function StepSelectGift({ gift, onConfirm, onBack }) {
         </div>
       </div>
       <div className="btn-row mt-lg">
-        <button className="btn btn-outline" onClick={onBack}>Back</button>
-        <button className="btn btn-navy" onClick={onConfirm}>Select This Gift</button>
+        <button className="btn1 btn-outline" onClick={onBack}>Back</button>
+        <button className="btn1 btn-navy" onClick={onConfirm}>Select This Gift</button>
       </div>
     </section>
   );
@@ -416,7 +416,8 @@ function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
       <StepHead icon={<IconPin />} kicker="Step 05" name="Delivery Details" num="05" />
       <div className="wf-row">
         <input className="field" placeholder="Full Name *" value={delivery.recipient_name} onChange={f('recipient_name')} />
-        <input className="field" placeholder="Phone Number *" value={delivery.phone} onChange={f('phone')} />
+          <input className="field" placeholder="Last Name *" value={delivery.last_name} onChange={f('last_name')} />
+       
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
         <input className="field" placeholder="Employee ID *" value={delivery.employee_id} onChange={f('employee_id')} />
@@ -426,21 +427,24 @@ function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
         </select>
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
+         <input className="field" placeholder="Phone Number *" value={delivery.phone} onChange={f('phone')} />
         <input className="field" placeholder="Email" value={delivery.client_email} onChange={f('client_email')} />
-        <input className="field" placeholder="Address *" value={delivery.address} onChange={f('address')} />
+    
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
+         <input className="field" placeholder="Address *" value={delivery.address} onChange={f('address')} />
         <input className="field" placeholder="City *" value={delivery.city} onChange={f('city')} />
-        <input className="field" placeholder="State *" value={delivery.state} onChange={f('state')} />
+      
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
+          <input className="field" placeholder="State *" value={delivery.state} onChange={f('state')} />
         <input className="field" placeholder="Pincode *" value={delivery.pincode} onChange={f('pincode')} />
-        <input className="field" placeholder="Gift Message" value={delivery.gift_message} onChange={f('gift_message')} />
+      
       </div>
       {error && <p className="error-text mt-lg">{error}</p>}
       <div className="btn-row mt-lg">
-        <button className="btn btn-outline" onClick={onBack}>Back</button>
-        <button className="btn btn-navy" onClick={onReview}>Review &amp; Confirm</button>
+        <button className="btn1 btn-outline" onClick={onBack}>Back</button>
+        <button className="btn1 btn-navy" onClick={onReview}>Review &amp; Confirm</button>
       </div>
     </section>
   );
@@ -454,21 +458,21 @@ function StepConfirm({ gift, delivery, onSubmit, onEdit, busy, error }) {
       <div className="review-list">
         <Row k="Selected Gift" v={gift.name} />
         <Row k="Recipient Name" v={delivery.recipient_name} />
+        <Row k="Last Name" v={delivery.last_name} />
         <Row k="Phone Number" v={delivery.phone} />
         <Row k="Employee ID" v={delivery.employee_id} />
         <Row k="Entity" v={delivery.entity} />
         <Row k="Delivery Address" v={`${delivery.address}, ${delivery.city}`} />
         <Row k="State" v={delivery.state} />
         <Row k="Pincode" v={delivery.pincode} />
-        <Row k="Gift Message" v={delivery.gift_message || '—'} />
       </div>
       <div className="callout mt-lg">
         ⚠ Please check your phone number and delivery address carefully before submitting.
       </div>
       {error && <p className="error-text mt-lg">{error}</p>}
       <div className="btn-row mt-lg">
-        <button className="btn btn-outline" onClick={onEdit}>Edit Details</button>
-        <button className="btn btn-gold" onClick={onSubmit} disabled={busy}>
+        <button className="btn1 btn-outline" onClick={onEdit}>Edit Details</button>
+        <button className="btn1 btn-gold" onClick={onSubmit} disabled={busy}>
           {busy ? <span className="spinner" style={{ borderTopColor: 'var(--navy-900)' }} /> : 'Confirm & Submit'}
         </button>
       </div>

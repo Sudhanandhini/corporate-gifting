@@ -46,7 +46,7 @@ async function nextOrderCode(conn) {
 // POST /api/orders  — created by the client workflow
 router.post('/', async (req, res) => {
   const b = req.body || {};
-  const required = ['gift_name', 'recipient_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
+  const required = ['gift_name', 'recipient_name', 'last_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
   for (const f of required) {
     if (!String(b[f] || '').trim()) {
       return res.status(400).json({ error: `Field "${f}" is required.` });
@@ -73,6 +73,7 @@ router.post('/', async (req, res) => {
       gift_name: String(b.gift_name).trim(),
       quantity: Number(b.quantity) || 1,
       recipient_name: String(b.recipient_name).trim(),
+      last_name: String(b.last_name).trim(),
       client_email,
       phone: String(b.phone).trim(),
       employee_id: String(b.employee_id).trim(),
@@ -86,15 +87,16 @@ router.post('/', async (req, res) => {
     };
     const [result] = await conn.query(
       `INSERT INTO orders
-        (order_code, gift_id, gift_name, quantity, recipient_name, client_email,
+        (order_code, gift_id, gift_name, quantity, recipient_name, last_name, client_email,
          phone, employee_id, entity, address, city, state, pincode, gift_message, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Submitted')`,
       [
         order_code,
         b.gift_id || null,
         orderForEmail.gift_name,
         orderForEmail.quantity,
         orderForEmail.recipient_name,
+        orderForEmail.last_name,
         client_email,
         orderForEmail.phone,
         orderForEmail.employee_id,
@@ -121,7 +123,7 @@ router.post('/', async (req, res) => {
 router.get('/', requireAdmin, async (req, res) => {
   const { where, params } = buildOrdersFilter(req.query);
   const [rows] = await pool.query(
-    `SELECT o.id, o.order_code, o.gift_name, o.quantity, o.recipient_name,
+    `SELECT o.id, o.order_code, o.gift_name, o.quantity, o.recipient_name, o.last_name,
             o.client_email, o.phone, o.employee_id, o.entity, o.address, o.city, o.state, o.pincode,
             o.gift_message, o.status, o.created_at
        FROM orders o

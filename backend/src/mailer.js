@@ -37,11 +37,11 @@ function orderDetailRows(order) {
     ['Order ID', order.order_code],
     ['Gift', `${order.gift_name}${order.quantity > 1 ? ` ×${order.quantity}` : ''}`],
     ['Recipient', order.recipient_name],
+    ['Last Name', order.last_name || '—'],
     ['Phone', order.phone],
     ['Employee ID', order.employee_id || '—'],
     ['Entity', order.entity || '—'],
     ['Delivery Address', `${order.address}, ${order.city}, ${order.state} ${order.pincode}`],
-    ['Gift Message', order.gift_message || '—'],
     ['Status', order.status],
   ];
 }

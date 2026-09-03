@@ -152,13 +152,13 @@ function ViewModal({ order, onClose }) {
         <h3>Order #{order.order_code}</h3>
         <div className="review-list">
           <Row k="Recipient" v={order.recipient_name} />
+          <Row k="Last Name" v={order.last_name || '—'} />
           <Row k="Gift" v={`${order.gift_name}${order.quantity > 1 ? ` ×${order.quantity}` : ''}`} />
           <Row k="Email" v={order.client_email || '—'} />
           <Row k="Phone" v={order.phone} />
           <Row k="Employee ID" v={order.employee_id || '—'} />
           <Row k="Entity" v={order.entity || '—'} />
           <Row k="Address" v={`${order.address}, ${order.city}, ${order.state} ${order.pincode}`} />
-          <Row k="Message" v={order.gift_message || '—'} />
           <Row k="Status" v={order.status} />
         </div>
         <button className="btn btn-navy" style={{ marginTop: 20 }} onClick={onClose}>Close</button>
