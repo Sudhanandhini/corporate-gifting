@@ -302,9 +302,14 @@ function StepVerify({ otp, setOtp, onVerify, onResend, devCode, busy, error }) {
 }
 
 /* ---------- reusable image slider ---------- */
+// Normalizes a gift's images into {url, title}[]. Handles the current API
+// shape, legacy plain-string arrays, and gifts with only the old single
+// cover image.
 function giftImages(g) {
-  if (g?.images?.length) return g.images;
-  return g?.image_url ? [g.image_url] : [];
+  if (g?.images?.length) {
+    return g.images.map((img) => (typeof img === 'string' ? { url: img, title: null } : img));
+  }
+  return g?.image_url ? [{ url: g.image_url, title: null }] : [];
 }
 
 const SLIDE_INTERVAL_MS = 3000;
@@ -326,20 +331,28 @@ function ImageSlider({ images, alt, className = '' }) {
     e.stopPropagation();
     setIdx((i) => (i + delta + images.length) % images.length);
   };
+  const current = images[idx];
   return (
     <div className={`img-slider ${className}`}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
-      <img src={assetUrl(images[idx])} alt={alt} />
+      <img src={assetUrl(current.url)} alt={current.title || alt} />
+      {(current.title || images.length > 1) && (
+        <div className="img-slider-bottom">
+          {current.title && <div className="img-slider-caption">{current.title}</div>}
+          {images.length > 1 && (
+            <div className="img-slider-dots">
+              {images.map((_, i) => (
+                <span key={i} className={`img-slider-dot ${i === idx ? 'active' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setIdx(i); }} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {images.length > 1 && (
         <>
           <button type="button" className="img-slider-nav prev" onClick={go(-1)} aria-label="Previous image">‹</button>
           <button type="button" className="img-slider-nav next" onClick={go(1)} aria-label="Next image">›</button>
-          <div className="img-slider-dots">
-            {images.map((_, i) => (
-              <span key={i} className={`img-slider-dot ${i === idx ? 'active' : ''}`}
-                onClick={(e) => { e.stopPropagation(); setIdx(i); }} />
-            ))}
-          </div>
         </>
       )}
     </div>

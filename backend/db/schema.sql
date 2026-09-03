@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS gift_images (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   gift_id     INT NOT NULL,
   image_url   VARCHAR(255) NOT NULL,
+  title       VARCHAR(160) NULL,                    -- per-image caption (e.g. one hamper item's name)
   sort_order  INT NOT NULL DEFAULT 0,
   CONSTRAINT fk_gift_images_gift FOREIGN KEY (gift_id) REFERENCES gifts(id) ON DELETE CASCADE,
   INDEX idx_gift_images_gift (gift_id)

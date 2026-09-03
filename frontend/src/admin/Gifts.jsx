@@ -75,7 +75,7 @@ export default function Gifts() {
   );
 }
 
-const MAX_IMAGES = 6;
+const MAX_IMAGES = 20;
 
 let newItemSeq = 0;
 
@@ -84,6 +84,7 @@ let newItemSeq = 0;
 // removed but not reordered, since it has no gift_images row of its own.
 const toExistingItems = (images) => (images || []).map((img) => ({
   key: `existing-${img.id ?? img.image_url}`, kind: 'existing', id: img.id, image_url: img.image_url,
+  title: img.title || '',
 }));
 
 function GiftModal({ mode, initial, onClose, onSaved, error, setError }) {
@@ -103,11 +104,12 @@ function GiftModal({ mode, initial, onClose, onSaved, error, setError }) {
     if (!picked.length) return;
     setItems((cur) => {
       const room = MAX_IMAGES - cur.length;
-      const added = picked.slice(0, room).map((file) => ({ key: `new-${newItemSeq++}`, kind: 'new', file }));
+      const added = picked.slice(0, room).map((file) => ({ key: `new-${newItemSeq++}`, kind: 'new', file, title: '' }));
       return [...cur, ...added];
     });
   };
   const removeItem = (key) => setItems((cur) => cur.filter((i) => i.key !== key));
+  const setItemTitle = (key, title) => setItems((cur) => cur.map((i) => (i.key === key ? { ...i, title } : i)));
 
   const onDragStart = (key) => (e) => {
     dragKey.current = key;
@@ -146,6 +148,7 @@ function GiftModal({ mode, initial, onClose, onSaved, error, setError }) {
 
       const newItems = items.filter((i) => i.kind === 'new');
       newItems.forEach((i) => fd.append('images', i.file));
+      fd.append('newTitles', JSON.stringify(newItems.map((i) => i.title.trim())));
 
       // "existing:<id>" / "new:<upload index>" tokens, in the on-screen drag
       // order; the legacy id-less cover can't be reordered so it's skipped.
@@ -163,6 +166,11 @@ function GiftModal({ mode, initial, onClose, onSaved, error, setError }) {
         const hadLegacyCover = (initial.images || []).some((img) => img.id == null);
         const keepsLegacyCover = items.some((i) => i.kind === 'existing' && i.id == null);
         fd.append('removeCover', (hadLegacyCover && !keepsLegacyCover) ? 'true' : 'false');
+
+        const existingTitles = Object.fromEntries(
+          items.filter((i) => i.kind === 'existing' && i.id != null).map((i) => [i.id, i.title.trim()])
+        );
+        fd.append('existingTitles', JSON.stringify(existingTitles));
       }
 
       if (mode === 'add') await api.createGift(fd);
@@ -173,25 +181,30 @@ function GiftModal({ mode, initial, onClose, onSaved, error, setError }) {
 
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal gift-modal" onClick={(e) => e.stopPropagation()}>
         <h3>{mode === 'add' ? 'Add Gift' : 'Edit Gift'}</h3>
         <div className="wf-stack">
           <div>
-            <label className="label">Images (up to {MAX_IMAGES}) — drag to reorder</label>
+            <label className="label">Images (up to {MAX_IMAGES}) — drag to reorder, title each item</label>
             <div className="gift-upload-grid">
               {items.map((item) => (
-                <div
-                  key={item.key}
-                  className={`gift-upload-thumb ${dragOverKey === item.key ? 'drag-over' : ''}`}
-                  draggable
-                  onDragStart={onDragStart(item.key)}
-                  onDragOver={onDragOver(item.key)}
-                  onDragLeave={() => setDragOverKey((k) => (k === item.key ? null : k))}
-                  onDrop={onDrop(item.key)}
-                  onDragEnd={() => { dragKey.current = null; setDragOverKey(null); }}
-                >
-                  <img src={item.kind === 'existing' ? assetUrl(item.image_url) : URL.createObjectURL(item.file)} alt="" />
-                  <button type="button" className="gift-upload-remove" onClick={() => removeItem(item.key)}>×</button>
+                <div key={item.key} className="gift-upload-card">
+                  <div
+                    className={`gift-upload-thumb ${dragOverKey === item.key ? 'drag-over' : ''}`}
+                    draggable
+                    onDragStart={onDragStart(item.key)}
+                    onDragOver={onDragOver(item.key)}
+                    onDragLeave={() => setDragOverKey((k) => (k === item.key ? null : k))}
+                    onDrop={onDrop(item.key)}
+                    onDragEnd={() => { dragKey.current = null; setDragOverKey(null); }}
+                  >
+                    <img src={item.kind === 'existing' ? assetUrl(item.image_url) : URL.createObjectURL(item.file)} alt="" />
+                    <button type="button" className="gift-upload-remove" onClick={() => removeItem(item.key)}>×</button>
+                  </div>
+                  <input
+                    className="gift-upload-title" type="text" placeholder="Title"
+                    value={item.title} onChange={(e) => setItemTitle(item.key, e.target.value)}
+                  />
                 </div>
               ))}
               {items.length < MAX_IMAGES && (

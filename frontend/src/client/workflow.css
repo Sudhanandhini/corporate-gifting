@@ -69,7 +69,16 @@
 .img-slider-nav.prev { left: 8px; }
 .img-slider-nav.next { right: 8px; }
 .img-slider-nav:hover { background: #fff; border-color: var(--gold-500); }
-.img-slider-dots { position: absolute; left: 0; right: 0; bottom: 8px; display: flex; justify-content: center; gap: 6px; }
+.img-slider-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 10px 8px;
+  background: linear-gradient(transparent, rgba(15,23,42,.62));
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.img-slider-caption {
+  color: #fff; font-size: 12px; font-weight: 700; text-align: center; max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+.img-slider-dots { display: flex; justify-content: center; gap: 6px; }
 .img-slider-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.7); cursor: pointer; }
 .img-slider-dot.active { background: #fff; width: 16px; border-radius: 4px; }
 

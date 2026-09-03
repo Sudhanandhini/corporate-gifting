@@ -46,9 +46,10 @@
   display: grid; place-items: center; overflow: hidden; flex: none;
 }
 .gift-row-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.gift-upload-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.gift-upload-grid { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; }
+.gift-upload-card { display: flex; flex-direction: column; gap: 5px; width: 76px; flex: none; }
 .gift-upload-thumb, .gift-upload-add {
-  width: 64px; height: 64px; border-radius: 10px; background: #eef1f7; color: var(--navy-800);
+  width: 76px; height: 76px; border-radius: 10px; background: #eef1f7; color: var(--navy-800);
   display: grid; place-items: center; overflow: hidden; flex: none; border: 1px solid var(--line); position: relative;
 }
 .gift-upload-thumb img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
@@ -61,6 +62,12 @@
   display: grid; place-items: center; cursor: pointer; padding: 0;
 }
 .gift-upload-remove:hover { background: var(--red-600); }
+.gift-upload-title {
+  width: 76px; font-size: 11px; padding: 5px 6px; border: 1px solid var(--line-strong); border-radius: 6px;
+  color: var(--navy-ink); font-family: inherit; outline: none;
+}
+.gift-upload-title:focus { border-color: var(--gold-500); }
+.gift-upload-title::placeholder { color: var(--muted-2); }
 .gift-upload-add { cursor: pointer; border-style: dashed; color: var(--muted); }
 .gift-upload-add:hover { border-color: var(--gold-500); color: var(--gold-600); }
 
@@ -127,6 +134,7 @@
 /* modal */
 .modal-bg { position: fixed; inset: 0; background: rgba(37,60,128,.45); display: grid; place-items: center; z-index: 40; padding: 20px; }
 .modal { background: #fff; border-radius: 16px; width: 100%; max-width: 440px; padding: 26px; box-shadow: var(--shadow); }
+.gift-modal { max-width: 600px; max-height: 88vh; overflow-y: auto; }
 .modal h3 { margin: 0 0 18px; font-size: 19px; }
 
 @media (max-width: 1000px) {
