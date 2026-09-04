@@ -35,3 +35,16 @@ export async function ensureGiftsSortOrder() {
     await pool.query('UPDATE gifts SET sort_order = id');
   }
 }
+
+// Creates the order_code counter for databases that predate it, seeded to
+// 2000 so the next generated order code is ORD-2001 regardless of whatever
+// (possibly corrupted) order_code strings already exist.
+export async function ensureOrderCounter() {
+  await pool.query(
+    `CREATE TABLE IF NOT EXISTS order_counter (
+       id          TINYINT NOT NULL PRIMARY KEY,
+       next_number INT NOT NULL
+     ) ENGINE=InnoDB`
+  );
+  await pool.query('INSERT IGNORE INTO order_counter (id, next_number) VALUES (1, 2000)');
+}

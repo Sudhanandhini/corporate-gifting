@@ -35,12 +35,14 @@ export function buildOrdersFilter({ search = '', status = '', dateFrom = '', dat
   return { where: where.join(' AND '), params, dateFrom: isDate(dateFrom) ? dateFrom : null, dateTo: isDate(dateTo) ? dateTo : null, status: STATUSES.includes(status) ? status : null };
 }
 
+// Atomically increments the order_counter row and returns the new value via
+// MySQL's LAST_INSERT_ID(expr) trick — safe under concurrent requests, and
+// immune to the string-parsing corruption the old MAX(order_code) approach
+// was prone to.
 async function nextOrderCode(conn) {
-  const [rows] = await conn.query(
-    `SELECT COALESCE(MAX(CAST(SUBSTRING(order_code, 5) AS UNSIGNED)), 1000) AS maxn
-       FROM orders WHERE order_code LIKE 'ORD-%'`
-  );
-  return `ORD-${(rows[0].maxn || 1000) + 1}`;
+  await conn.query('UPDATE order_counter SET next_number = LAST_INSERT_ID(next_number + 1) WHERE id = 1');
+  const [[{ n }]] = await conn.query('SELECT LAST_INSERT_ID() AS n');
+  return `ORD-${n}`;
 }
 
 // POST /api/orders  — created by the client workflow

@@ -72,6 +72,16 @@ CREATE TABLE IF NOT EXISTS orders (
   INDEX idx_orders_created (created_at)
 ) ENGINE=InnoDB;
 
+-- Single-row atomic counter for order_code (ORD-<n>). A dedicated counter
+-- avoids parsing existing order_code strings for the next number, which is
+-- what let corrupted values snowball (e.g. ORD-1005 -> ORD-100511...).
+-- Starts at 2000 so the first generated code is ORD-2001.
+CREATE TABLE IF NOT EXISTS order_counter (
+  id          TINYINT NOT NULL PRIMARY KEY,
+  next_number INT NOT NULL
+) ENGINE=InnoDB;
+INSERT IGNORE INTO order_counter (id, next_number) VALUES (1, 2000);
+
 -- Generated Excel exports of the Orders list, listed in the admin Reports section.
 CREATE TABLE IF NOT EXISTS reports (
   id            INT AUTO_INCREMENT PRIMARY KEY,

@@ -1,0 +1,17 @@
+# Serves the React SPA from https://sunsysweb.co.in/gift on Apache
+# (cPanel / shared hosting). Copied to dist/ as-is by Vite's build.
+
+RewriteEngine On
+RewriteBase /gift/
+
+# Let real files and directories (built assets, favicon, etc.) pass through.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else (client-side routes like /gift/admin) falls back to
+# index.html so React Router can handle it.
+RewriteRule ^ index.html [L]
+
+# Don't let visitors browse the assets folder.
+Options -Indexes

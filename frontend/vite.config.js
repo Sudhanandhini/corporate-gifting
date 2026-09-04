@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // The production build is served from https://sunsysweb.co.in/gift, so
+  // asset URLs need that prefix; local dev keeps serving from the root.
+  base: mode === 'production' ? '/gift/' : '/',
   plugins: [react()],
   server: {
     port: 5173,
@@ -17,4 +20,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

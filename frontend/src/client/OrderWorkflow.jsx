@@ -94,7 +94,7 @@ export default function OrderWorkflow() {
   return (
     <div className="wf-page">
       {/* <Link to="/admin" className="wf-adminlink">Admin →</Link> */}
-      {step >= 2 && step <= 5 && (
+      {step >= 2 && step <= 6 && (
         <button type="button" className="wf-logout" onClick={handleLogout}>
           <IconLogout width={16} height={16} /> Logout
         </button>
