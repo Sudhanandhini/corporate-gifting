@@ -6,7 +6,7 @@ import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import { ping } from './db.js';
+import { ping, ensureGiftsSortOrder } from './db.js';
 import authRoutes from './routes/auth.js';
 import giftRoutes from './routes/gifts.js';
 import employeeRoutes from './routes/employees.js';
@@ -48,6 +48,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-});
+ensureGiftsSortOrder()
+  .catch((e) => console.error('Failed to ensure gifts.sort_order column:', e))
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`API listening on http://localhost:${PORT}`);
+    });
+  });

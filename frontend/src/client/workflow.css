@@ -47,7 +47,7 @@
 /* gift grid */
 .gift-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .gift-tile { border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: center; }
-.gift-thumb { width: 100%; aspect-ratio: 9 / 10; max-height: 300px; border-radius: 10px; margin: 0 auto 12px; }
+.gift-thumb { width: 100%; aspect-ratio: 9 / 10; max-height: 500px; border-radius: 10px; margin: 0 auto 12px; }
 .gift-name { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
 .gift-desc { color: var(--muted); font-size: 13px; margin: 0 0 14px; line-height: 1.4; }
 .gift-tile.sel { border-color: var(--gold-500); box-shadow: 0 0 0 3px var(--gold-100); }
@@ -56,7 +56,7 @@
 
 /* selected gift detail */
 .sel-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-.sel-thumb { height: 450px; border-radius: 12px; }
+.sel-thumb { height: 600px; border-radius: 12px; }
 
 /* image slider (gift thumb, detail view, and preview modal) */
 .img-slider { position: relative; overflow: hidden; background: #eef1f7; color: var(--navy-800); display: grid; place-items: center; }
@@ -82,6 +82,25 @@
 .img-slider-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.7); cursor: pointer; }
 .img-slider-dot.active { background: #fff; width: 16px; border-radius: 4px; }
 
+/* ecommerce-style thumbnail strip beside a detail image */
+.img-slider-wrap { display: flex; gap: 10px; }
+.img-slider-wrap .img-slider { flex: 1; min-width: 0; }
+.img-slider-thumbs { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.img-slider-thumb {
+  width: 60px; height: 60px; flex: none; padding: 0; border-radius: 8px; overflow: hidden; cursor: pointer;
+  border: 2px solid var(--line-strong); background: #fff; opacity: .7;
+}
+.img-slider-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-slider-thumb:hover { opacity: 1; border-color: var(--gold-500); }
+.img-slider-thumb.active { opacity: 1; border-color: var(--gold-500); box-shadow: 0 0 0 2px var(--gold-100); }
+
+/* list of per-image titles shown next to the detail image */
+.sel-image-list { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.sel-image-list li {
+  font-size: 16px; color: var(--muted); padding: 10px 10px; border-radius: 8px; border: 1px solid transparent;
+}
+.sel-image-list li.active { color: var(--navy-ink); font-weight: 700; background: var(--gold-100); border-color: var(--gold-500); }
+
 /* gift preview modal ("View More") */
 .wf-modal-bg { position: fixed; inset: 0; background: rgba(37,60,128,.5); display: grid; place-items: center; z-index: 60; padding: 20px; }
 .wf-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 580px; padding: 50px; box-shadow: 0 20px 50px rgba(37,60,128,.25); position: relative; max-height: 90vh; overflow-y: auto; }
@@ -91,7 +110,7 @@
   box-shadow: 0 1px 4px rgba(37,60,128,.2);
 }
 .wf-modal-close:hover { background: #e6e9f0; }
-.gift-preview-slider { width: 100%; height: 260px; border-radius: 12px; }
+.gift-preview-slider { width: 100%; height: 460px; border-radius: 12px; }
 .qty { display: inline-flex; align-items: center; border: 1.5px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
 .qty button { width: 44px; height: 44px; border: none; background: #fff; font-size: 20px; cursor: pointer; color: var(--navy-ink); }
 .qty button:hover { background: #f4f6fa; }
@@ -154,10 +173,15 @@
   .rail-label { display: none; }
   .otp-box { width: 44px; height: 50px; font-size: 20px; }
   .wf-card { padding: 20px; }
-  .sel-thumb { height: 220px; }
+  .sel-thumb { height: 420px; }
   .wf-modal { padding: 22px 18px; max-width: 100%; }
   .gift-preview-slider { height: 200px; }
   .otp-row { gap: 8px; }
+  .img-slider-wrap { flex-direction: column; }
+  .img-slider-thumbs { flex-direction: row; flex-wrap: wrap; overflow-y: visible; width: auto; }
+  .img-slider-thumb { width: 48px; height: 48px; padding: 0; }
+  .img-slider-thumb-img { width: 100%; height: 100%; }
+  .img-slider-thumb-title { display: none; }
 }
 
 /* The fixed Logout / Admin pill sits above the centered header on wide

@@ -21,3 +21,17 @@ export async function ping() {
     conn.release();
   }
 }
+
+// Adds gifts.sort_order for databases created before drag-to-reorder existed.
+// schema.sql's CREATE TABLE IF NOT EXISTS is a no-op on an existing table, so
+// this keeps already-deployed databases in sync without a migration runner.
+export async function ensureGiftsSortOrder() {
+  const [cols] = await pool.query(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'gifts' AND column_name = 'sort_order'`
+  );
+  if (cols[0].c === 0) {
+    await pool.query('ALTER TABLE gifts ADD COLUMN sort_order INT NOT NULL DEFAULT 0');
+    await pool.query('UPDATE gifts SET sort_order = id');
+  }
+}

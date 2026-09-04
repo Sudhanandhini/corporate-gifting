@@ -77,6 +77,13 @@
 .tbl td { padding: 14px; border-top: 1px solid var(--line); font-size: 14px; }
 .tbl tr:first-child td { border-top: none; }
 .tbl .oid { font-weight: 800; }
+.tbl tr[draggable="true"] { transition: background .12s ease; }
+.tbl tr[draggable="true"].drag-over { background: var(--gold-100); }
+.tbl .drag-handle {
+  width: 22px; padding-left: 14px !important; padding-right: 0 !important; color: var(--muted-2);
+  cursor: grab; font-size: 16px; line-height: 1; user-select: none;
+}
+.tbl .drag-handle:active { cursor: grabbing; }
 .link-gold { color: var(--gold-600); font-weight: 700; cursor: pointer; }
 .link-red { color: #c0392b; font-weight: 700; cursor: pointer; }
 .link-navy { color: var(--navy-800); font-weight: 700; cursor: pointer; }

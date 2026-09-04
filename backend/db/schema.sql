@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS gifts (
   name        VARCHAR(120) NOT NULL,
   description VARCHAR(255) NOT NULL,
   image_url   VARCHAR(255) NULL,
-  active      TINYINT(1) NOT NULL DEFAULT 1
+  active      TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order  INT NOT NULL DEFAULT 0                -- catalogue display order, set via admin drag-to-reorder
 ) ENGINE=InnoDB;
 
 -- Extra gallery images per gift, shown in the client-side image slider

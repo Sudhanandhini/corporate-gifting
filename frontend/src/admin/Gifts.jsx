@@ -8,6 +8,8 @@ export default function Gifts() {
   const [rows, setRows] = useState([]);
   const [modal, setModal] = useState(null); // null | {mode, data}
   const [err, setErr] = useState('');
+  const dragId = useRef(null);
+  const [dragOverId, setDragOverId] = useState(null);
 
   const load = () => api.adminGifts().then(setRows).catch((e) => setErr(e.message));
   useEffect(() => { load(); }, []);
@@ -18,10 +20,40 @@ export default function Gifts() {
     load();
   };
 
+  const onDragStart = (id) => (e) => {
+    dragId.current = id;
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const onDragOver = (id) => (e) => {
+    e.preventDefault();
+    if (id !== dragOverId) setDragOverId(id);
+  };
+  const onDrop = (targetId) => async (e) => {
+    e.preventDefault();
+    setDragOverId(null);
+    const fromId = dragId.current;
+    dragId.current = null;
+    if (fromId == null || fromId === targetId) return;
+    const fromIdx = rows.findIndex((r) => r.id === fromId);
+    const toIdx = rows.findIndex((r) => r.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const prev = rows;
+    const next = [...rows];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setRows(next);
+    try {
+      await api.reorderGifts(next.map((r) => r.id));
+    } catch (e2) {
+      setErr(e2.message);
+      setRows(prev);
+    }
+  };
+
   return (
     <>
       <div className="main-head">
-        <div><h1>Gifts</h1><div className="sub">Manage the gift catalogue</div></div>
+        <div><h1>Gifts</h1><div className="sub">Manage the gift catalogue — drag rows to reorder</div></div>
         <button className="btn btn-navy" style={{ width: 'auto' }}
           onClick={() => { setErr(''); setModal({ mode: 'add', data: empty }); }}>
           <IconPlus width={16} height={16} /> Add Gift
@@ -31,11 +63,20 @@ export default function Gifts() {
       <div className="card panel">
         <table className="tbl">
           <thead>
-            <tr><th>Image</th><th>Name</th><th>Description</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+            <tr><th></th><th>Image</th><th>Name</th><th>Description</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
           </thead>
           <tbody>
             {rows.map((g) => (
-              <tr key={g.id}>
+              <tr key={g.id}
+                className={dragOverId === g.id ? 'drag-over' : ''}
+                draggable
+                onDragStart={onDragStart(g.id)}
+                onDragOver={onDragOver(g.id)}
+                onDragLeave={() => setDragOverId((id) => (id === g.id ? null : id))}
+                onDrop={onDrop(g.id)}
+                onDragEnd={() => { dragId.current = null; setDragOverId(null); }}
+              >
+                <td className="drag-handle" title="Drag to reorder">⠿</td>
                 <td>
                   <div className="gift-row-thumb">
                     {g.image_url
@@ -58,11 +99,12 @@ export default function Gifts() {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={5} className="muted" style={{ textAlign: 'center', padding: 28 }}>No gifts yet.</td></tr>
+              <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 28 }}>No gifts yet.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+      {err && <p className="error-text" style={{ marginTop: 14 }}>{err}</p>}
 
       {modal && (
         <GiftModal

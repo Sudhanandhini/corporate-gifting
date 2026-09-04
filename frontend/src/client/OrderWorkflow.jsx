@@ -105,9 +105,9 @@ export default function OrderWorkflow() {
           <h1 className="wf-title">
             <img src={logo} alt="Randstad" className="wf-logo" /> <span className="gold">Seasonal Gifts 2026</span>
           </h1>
-          <p className="wf-sub">
+          {/* <p className="wf-sub">
             Secure Email Verification → Gift Selection → Recipient Details → Confirmation → Order Completion
-          </p>
+          </p> */}
         </header>
 
         {step === 0 && (
@@ -314,7 +314,7 @@ function giftImages(g) {
 
 const SLIDE_INTERVAL_MS = 3000;
 
-function ImageSlider({ images, alt, className = '' }) {
+function ImageSlider({ images, alt, className = '', onIndexChange, showThumbnails = false }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -324,6 +324,8 @@ function ImageSlider({ images, alt, className = '' }) {
     return () => clearInterval(t);
   }, [images.length, paused]);
 
+  useEffect(() => { onIndexChange?.(idx); }, [idx, onIndexChange]);
+
   if (!images.length) {
     return <div className={`img-slider ${className}`}><IconGift width={26} height={26} /></div>;
   }
@@ -332,14 +334,15 @@ function ImageSlider({ images, alt, className = '' }) {
     setIdx((i) => (i + delta + images.length) % images.length);
   };
   const current = images[idx];
-  return (
+  const withThumbs = showThumbnails && images.length > 1;
+  const slider = (
     <div className={`img-slider ${className}`}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <img src={assetUrl(current.url)} alt={current.title || alt} />
-      {(current.title || images.length > 1) && (
+      {(current.title || (images.length > 1 && !withThumbs)) && (
         <div className="img-slider-bottom">
           {current.title && <div className="img-slider-caption">{current.title}</div>}
-          {images.length > 1 && (
+          {images.length > 1 && !withThumbs && (
             <div className="img-slider-dots">
               {images.map((_, i) => (
                 <span key={i} className={`img-slider-dot ${i === idx ? 'active' : ''}`}
@@ -357,16 +360,33 @@ function ImageSlider({ images, alt, className = '' }) {
       )}
     </div>
   );
+  if (!withThumbs) return slider;
+  return (
+    <div className="img-slider-wrap">
+      {slider}
+      <div className="img-slider-thumbs">
+        {images.map((img, i) => (
+          <button type="button" key={i} className={`img-slider-thumb ${i === idx ? 'active' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setIdx(i); }} aria-label={img.title || `View image ${i + 1}`}>
+            <img src={assetUrl(img.url)} alt={img.title || alt} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /* ---------- gift preview modal (opened via "View More") ---------- */
 function GiftPreviewModal({ gift, onClose, onSelect }) {
+  const images = giftImages(gift);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const activeTitle = images[activeIdx]?.title || gift.name;
   return (
     <div className="wf-modal-bg" onClick={onClose}>
       <div className="wf-modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="wf-modal-close" onClick={onClose} aria-label="Close">×</button>
-        <ImageSlider images={giftImages(gift)} alt={gift.name} className="gift-preview-slider" />
-        <h3 style={{ margin: '16px 0 6px' }}>{gift.name}</h3>
+        <ImageSlider images={images} alt={gift.name} className="gift-preview-slider" onIndexChange={setActiveIdx} showThumbnails />
+        <h3 style={{ margin: '16px 0 6px' }}>{activeTitle}</h3>
         <p className="muted" style={{ marginTop: 0 }}>{gift.description}</p>
         <button className="btn btn-navy mt-lg" onClick={() => { onSelect(gift); onClose(); }}>
           Select This Gift
@@ -403,14 +423,24 @@ function StepGiftCollection({ gifts, onSelect }) {
 
 /* ---------- Step 4: Select Your Gift ---------- */
 function StepSelectGift({ gift, onConfirm, onBack }) {
+  const images = giftImages(gift);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const activeTitle = images[activeIdx]?.title || gift.name;
   return (
     <section className="card wf-card">
       <StepHead icon={<IconGift />} kicker="Step 04" name="Select Your Gift" num="04" />
       <div className="sel-detail">
-        <ImageSlider images={giftImages(gift)} alt={gift.name} className="sel-thumb" />
+        <ImageSlider images={images} alt={gift.name} className="sel-thumb" onIndexChange={setActiveIdx} showThumbnails />
         <div>
-          <h3 style={{ margin: '0 0 6px' }}>{gift.name}</h3>
+          <h3 style={{ margin: '0 0 6px', fontSize:'20px' }}>{activeTitle}</h3>
           <p className="muted" style={{ marginTop: 0 }}>{gift.description}</p>
+          {images.length > 1 && (
+            <ul className="sel-image-list">
+              {images.map((img, i) => (
+                <li key={i} className={i === activeIdx ? 'active' : ''}>{img.title || gift.name}</li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
       <div className="btn-row mt-lg">

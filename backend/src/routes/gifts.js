@@ -89,7 +89,7 @@ async function attachImageLists(rows) {
 // GET /api/gifts — public, active gifts only (used by the client workflow)
 router.get('/', ah(async (_req, res) => {
   const [rows] = await pool.query(
-    'SELECT id, name, description, image_url FROM gifts WHERE active = 1 ORDER BY id'
+    'SELECT id, name, description, image_url FROM gifts WHERE active = 1 ORDER BY sort_order, id'
   );
   const withImages = await attachImageLists(rows);
   res.json(withImages.map(({ imageList, ...r }) => ({
@@ -98,13 +98,23 @@ router.get('/', ah(async (_req, res) => {
   })));
 }));
 
-// GET /api/gifts/admin — admin, all gifts including inactive
+// GET /api/gifts/admin — admin, all gifts including inactive, in catalogue display order
 router.get('/admin', requireAdmin, ah(async (_req, res) => {
   const [rows] = await pool.query(
-    'SELECT id, name, description, image_url, active FROM gifts ORDER BY id DESC'
+    'SELECT id, name, description, image_url, active FROM gifts ORDER BY sort_order, id'
   );
   const withImages = await attachImageLists(rows);
   res.json(withImages.map(({ imageList, ...r }) => ({ ...r, images: imageList })));
+}));
+
+// PUT /api/gifts/reorder — admin, persists the catalogue display order from
+// a drag-and-drop reorder (body: { order: [giftId, ...] } in the new order).
+// Must be declared before PUT /:id so "reorder" isn't matched as an id.
+router.put('/reorder', requireAdmin, ah(async (req, res) => {
+  const order = Array.isArray(req.body.order) ? req.body.order.map(Number).filter(Number.isInteger) : [];
+  if (!order.length) return res.status(400).json({ error: 'order must be a non-empty array of gift ids.' });
+  await Promise.all(order.map((id, i) => pool.query('UPDATE gifts SET sort_order = ? WHERE id = ?', [i, id])));
+  res.json({ ok: true });
 }));
 
 // POST /api/gifts — admin, create a gift (multipart/form-data: name, description, images[]?)
@@ -119,9 +129,10 @@ router.post('/', requireAdmin, upload.array('images', MAX_IMAGES), ah(async (req
   const { files, titles } = orderFiles(rawFiles, rawTitles, req.body.imageOrder);
   const image_url = files[0] ? `/uploads/gifts/${files[0].filename}` : null;
 
+  const [[{ nextOrder }]] = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS nextOrder FROM gifts');
   const [result] = await pool.query(
-    'INSERT INTO gifts (name, description, image_url, active) VALUES (?, ?, ?, 1)',
-    [name, description, image_url]
+    'INSERT INTO gifts (name, description, image_url, active, sort_order) VALUES (?, ?, ?, 1, ?)',
+    [name, description, image_url, nextOrder]
   );
   const giftId = result.insertId;
 

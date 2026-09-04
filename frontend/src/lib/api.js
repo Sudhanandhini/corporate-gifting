@@ -41,6 +41,7 @@ export const api = {
   createGift: (formData) => request('/gifts', { method: 'POST', body: formData }),
   updateGift: (id, formData) => request(`/gifts/${id}`, { method: 'PUT', body: formData }),
   deleteGift: (id) => request(`/gifts/${id}`, { method: 'DELETE' }),
+  reorderGifts: (order) => request('/gifts/reorder', { method: 'PUT', body: JSON.stringify({ order }) }),
 
   // orders
   createOrder: (payload) =>
