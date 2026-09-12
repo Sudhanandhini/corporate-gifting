@@ -54,7 +54,7 @@ export default function Dashboard() {
             {recentOrders.map((o) => (
               <tr key={o.order_code}>
                 <td className="oid">#{o.order_code}</td>
-                <td>{o.recipient_name}</td>
+                <td>{o.recipient_name} {o.last_name}</td>
                 <td>{o.gift_name}</td>
                 <td>{shortDate(o.created_at)}</td>
                 <td><span className={`status ${statusClass(o.status)}`}>{o.status}</span></td>

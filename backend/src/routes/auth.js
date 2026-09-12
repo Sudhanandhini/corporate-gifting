@@ -47,7 +47,9 @@ router.post('/request-otp', async (req, res) => {
     [email, code, expires]
   );
 
-  const result = await sendOtpEmail(email, code);
+  // Don't block the response on the SMTP round-trip — the OTP is already
+  // saved, so respond immediately and let the send happen in the background.
+  sendOtpEmail(email, code).catch((e) => console.error('Failed to send OTP email:', e));
 
   // In dev mode we surface the code so the client can be tested without SMTP.
   res.json({
@@ -86,7 +88,12 @@ router.post('/verify-otp', async (req, res) => {
     [email]
   );
 
-  res.json({ verified: true, email, existingOrder: existing[0] || null });
+  const [[employee]] = await pool.query(
+    'SELECT first_name, last_name FROM employees WHERE email = ?',
+    [email]
+  );
+
+  res.json({ verified: true, email, existingOrder: existing[0] || null, employee: employee || null });
 });
 
 export default router;

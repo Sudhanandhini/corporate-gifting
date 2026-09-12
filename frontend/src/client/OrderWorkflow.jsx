@@ -17,6 +17,15 @@ const ENTITIES = [
   'Randstad India Private Limited',
 ];
 
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+  'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+  'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+];
+
 const emptyDelivery = {
   recipient_name: '', last_name: '', phone: '', client_email: '', employee_id: '', entity: '',
   address: '', city: '', state: '', pincode: '',
@@ -142,6 +151,13 @@ export default function OrderWorkflow() {
               setBusy(true);
               try {
                 const r = await api.verifyOtp(email, code);
+                if (r.employee) {
+                  setDelivery((d) => ({
+                    ...d,
+                    recipient_name: r.employee.first_name || '',
+                    last_name: r.employee.last_name || '',
+                  }));
+                }
                 if (r.existingOrder) {
                   setOrder(r.existingOrder);
                   setAlreadyPlaced(true);
@@ -179,6 +195,8 @@ export default function OrderWorkflow() {
               setError('');
               const req = ['recipient_name', 'last_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
               if (req.some((f) => !delivery[f].trim())) { setError('Please fill in all required (*) fields.'); return; }
+              if (delivery.phone.length !== 10) { setError('Phone number must be exactly 10 digits.'); return; }
+              if (delivery.pincode.length !== 6) { setError('Pincode must be exactly 6 digits.'); return; }
               setStep(5);
             }}
           />
@@ -317,12 +335,24 @@ const SLIDE_INTERVAL_MS = 3000;
 function ImageSlider({ images, alt, className = '', onIndexChange, showThumbnails = false }) {
   const [idx, setIdx] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [visible, setVisible] = useState(true);
+  const rootRef = useRef(null);
+
+  // Only auto-advance while the slider is actually on screen, so off-screen
+  // gift tiles in a long grid don't keep re-rendering (and janking scroll).
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const obs = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.1 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
-    if (images.length <= 1 || paused) return;
+    if (images.length <= 1 || paused || !visible) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % images.length), SLIDE_INTERVAL_MS);
     return () => clearInterval(t);
-  }, [images.length, paused]);
+  }, [images.length, paused, visible]);
 
   useEffect(() => { onIndexChange?.(idx); }, [idx, onIndexChange]);
 
@@ -336,7 +366,7 @@ function ImageSlider({ images, alt, className = '', onIndexChange, showThumbnail
   const current = images[idx];
   const withThumbs = showThumbnails && images.length > 1;
   const slider = (
-    <div className={`img-slider ${className}`}
+    <div ref={rootRef} className={`img-slider ${className}`}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <img src={assetUrl(current.url)} alt={current.title || alt} />
       {(current.title || (images.length > 1 && !withThumbs)) && (
@@ -454,13 +484,21 @@ function StepSelectGift({ gift, onConfirm, onBack }) {
 /* ---------- Step 5: Delivery Details ---------- */
 function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
   const f = (k) => (e) => setDelivery((d) => ({ ...d, [k]: e.target.value }));
+  const fLetters = (k) => (e) => {
+    const v = e.target.value.replace(/[^A-Za-z\s]/g, '');
+    setDelivery((d) => ({ ...d, [k]: v }));
+  };
+  const fDigits = (k, maxLen) => (e) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, maxLen);
+    setDelivery((d) => ({ ...d, [k]: v }));
+  };
   return (
     <section className="card wf-card">
       <StepHead icon={<IconPin />} kicker="Step 05" name="Delivery Details" num="05" />
       <div className="wf-row">
-        <input className="field" placeholder="Full Name *" value={delivery.recipient_name} onChange={f('recipient_name')} />
-          <input className="field" placeholder="Last Name *" value={delivery.last_name} onChange={f('last_name')} />
-       
+        <input className="field" placeholder="Full Name *" value={delivery.recipient_name} onChange={fLetters('recipient_name')} />
+          <input className="field" placeholder="Last Name *" value={delivery.last_name} onChange={fLetters('last_name')} />
+
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
         <input className="field" placeholder="Employee ID *" value={delivery.employee_id} onChange={f('employee_id')} />
@@ -470,19 +508,22 @@ function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
         </select>
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
-         <input className="field" placeholder="Phone Number *" value={delivery.phone} onChange={f('phone')} />
+         <input className="field" placeholder="Phone Number *" value={delivery.phone} onChange={fDigits('phone', 10)} type="tel" inputMode="numeric" maxLength={10} />
         <input className="field" placeholder="Email" value={delivery.client_email} onChange={f('client_email')} />
-    
+
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
          <input className="field" placeholder="Address *" value={delivery.address} onChange={f('address')} />
-        <input className="field" placeholder="City *" value={delivery.city} onChange={f('city')} />
-      
+        <input className="field" placeholder="City *" value={delivery.city} onChange={fLetters('city')} />
+
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
-          <input className="field" placeholder="State *" value={delivery.state} onChange={f('state')} />
-        <input className="field" placeholder="Pincode *" value={delivery.pincode} onChange={f('pincode')} />
-      
+          <select className="field" value={delivery.state} onChange={f('state')}>
+            <option value="">Select State *</option>
+            {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        <input className="field" placeholder="Pincode *" value={delivery.pincode} onChange={fDigits('pincode', 6)} type="tel" inputMode="numeric" maxLength={6} />
+
       </div>
       {error && <p className="error-text mt-lg">{error}</p>}
       <div className="btn-row mt-lg">

@@ -110,7 +110,7 @@ export default function Orders() {
                   <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleOne(o.id)} aria-label={`Select order ${o.order_code}`} />
                 </td>
                 <td className="oid">#{o.order_code}</td>
-                <td>{o.recipient_name}</td>
+                <td>{o.recipient_name} {o.last_name}</td>
                 <td>{o.gift_name}</td>
                 <td>{shortDate(o.created_at)}</td>
                 <td><span className={`status ${o.status.toLowerCase()}`}>{o.status}</span></td>
@@ -151,8 +151,7 @@ function ViewModal({ order, onClose }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h3>Order #{order.order_code}</h3>
         <div className="review-list">
-          <Row k="Recipient" v={order.recipient_name} />
-          <Row k="Last Name" v={order.last_name || '—'} />
+          <Row k="Recipient" v={`${order.recipient_name} ${order.last_name || ''}`.trim()} />
           <Row k="Gift" v={`${order.gift_name}${order.quantity > 1 ? ` ×${order.quantity}` : ''}`} />
           <Row k="Email" v={order.client_email || '—'} />
           <Row k="Phone" v={order.phone} />

@@ -15,7 +15,7 @@ router.get('/stats', async (_req, res) => {
   );
 
   const [recent] = await pool.query(
-    `SELECT order_code, recipient_name, gift_name, status, created_at
+    `SELECT order_code, recipient_name, last_name, gift_name, status, created_at
        FROM orders ORDER BY id DESC LIMIT 5`
   );
 
