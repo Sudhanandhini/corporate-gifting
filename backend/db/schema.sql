@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS gifts (
   description VARCHAR(255) NOT NULL,
   image_url   VARCHAR(255) NULL,
   active      TINYINT(1) NOT NULL DEFAULT 1,
-  sort_order  INT NOT NULL DEFAULT 0                -- catalogue display order, set via admin drag-to-reorder
+  sort_order  INT NOT NULL DEFAULT 0,               -- catalogue display order, set via admin drag-to-reorder
+  INDEX idx_gifts_active_sort (active, sort_order)  -- matches the public catalogue's WHERE active = 1 ORDER BY sort_order
 ) ENGINE=InnoDB;
 
 -- Extra gallery images per gift, shown in the client-side image slider
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   expires_at  DATETIME     NOT NULL,
   consumed    TINYINT(1)   NOT NULL DEFAULT 0,
   created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_otp_email (email)
+  INDEX idx_otp_email_code (email, code)             -- covers both the email-only (request-otp) and email+code (verify-otp) lookups
 ) ENGINE=InnoDB;
 
 -- Orders placed through the client workflow.
@@ -75,9 +76,12 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   deleted_at     DATETIME NULL,                         -- soft delete: set when an admin removes an order, cleared on restore
   CONSTRAINT fk_orders_gift FOREIGN KEY (gift_id) REFERENCES gifts(id) ON DELETE SET NULL,
-  INDEX idx_orders_status (status),
-  INDEX idx_orders_created (created_at),
-  INDEX idx_orders_deleted (deleted_at)
+  -- deleted_at is filtered on almost every orders query (admin list, dashboard
+  -- KPIs, the employees-list status join), so it leads every composite below
+  -- rather than standing alone.
+  INDEX idx_orders_deleted_status (deleted_at, status),     -- dashboard KPI counts
+  INDEX idx_orders_deleted_created (deleted_at, created_at), -- dashboard's last-7-days + recent orders
+  INDEX idx_orders_client_email (client_email, deleted_at)  -- dedupe check, OTP resume flow, employees status join
 ) ENGINE=InnoDB;
 
 -- Single-row atomic counter for order_code (ORD-<n>). A dedicated counter

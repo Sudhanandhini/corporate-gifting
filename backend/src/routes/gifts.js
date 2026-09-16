@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import multer from 'multer';
 import { pool } from '../db.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'gifts');
@@ -87,7 +88,7 @@ async function attachImageLists(rows) {
 }
 
 // GET /api/gifts — public, active gifts only (used by the client workflow)
-router.get('/', ah(async (_req, res) => {
+router.get('/', cacheMiddleware('gifts:public', 300), ah(async (_req, res) => {
   const [rows] = await pool.query(
     'SELECT id, name, description, image_url FROM gifts WHERE active = 1 ORDER BY sort_order, id'
   );
@@ -98,10 +99,14 @@ router.get('/', ah(async (_req, res) => {
   })));
 }));
 
-// GET /api/gifts/admin — admin, all gifts including inactive, in catalogue display order
-router.get('/admin', requireAdmin, ah(async (_req, res) => {
+// GET /api/gifts/admin?search= — admin, all gifts including inactive, in catalogue display order
+router.get('/admin', requireAdmin, cacheMiddleware('gifts:admin', 60), ah(async (req, res) => {
+  const search = `%${String(req.query.search || '').trim()}%`;
   const [rows] = await pool.query(
-    'SELECT id, name, description, image_url, active FROM gifts ORDER BY sort_order, id'
+    `SELECT id, name, description, image_url, active FROM gifts
+      WHERE name LIKE ? OR description LIKE ?
+      ORDER BY sort_order, id`,
+    [search, search]
   );
   const withImages = await attachImageLists(rows);
   res.json(withImages.map(({ imageList, ...r }) => ({ ...r, images: imageList })));
@@ -114,6 +119,7 @@ router.put('/reorder', requireAdmin, ah(async (req, res) => {
   const order = Array.isArray(req.body.order) ? req.body.order.map(Number).filter(Number.isInteger) : [];
   if (!order.length) return res.status(400).json({ error: 'order must be a non-empty array of gift ids.' });
   await Promise.all(order.map((id, i) => pool.query('UPDATE gifts SET sort_order = ? WHERE id = ?', [i, id])));
+  await invalidateCache('gifts');
   res.json({ ok: true });
 }));
 
@@ -144,6 +150,7 @@ router.post('/', requireAdmin, upload.array('images', MAX_IMAGES), ah(async (req
     );
   }
 
+  await invalidateCache('gifts');
   res.status(201).json({ id: giftId, name, description, image_url, images, active: 1 });
 }));
 
@@ -223,6 +230,7 @@ router.put('/:id', requireAdmin, upload.array('images', MAX_IMAGES), ah(async (r
   );
 
   const images = imgRows.length ? imgRows : (image_url ? [{ id: null, image_url, title: null }] : []);
+  await invalidateCache('gifts');
   res.json({ id, name, description, image_url, images, active });
 }));
 
@@ -237,6 +245,7 @@ router.delete('/:id', requireAdmin, ah(async (req, res) => {
   await pool.query('DELETE FROM gifts WHERE id = ?', [id]); // cascades gift_images
   const files = new Set([rows[0].image_url, ...galleryRows.map((r) => r.image_url)].filter(Boolean));
   files.forEach(removeImageFile);
+  await invalidateCache('gifts');
   res.json({ ok: true });
 }));
 

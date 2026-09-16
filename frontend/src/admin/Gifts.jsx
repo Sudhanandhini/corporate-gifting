@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, assetUrl } from '../lib/api.js';
-import { IconGift, IconPlus } from '../lib/icons.jsx';
+import { IconGift, IconPlus, IconSearch } from '../lib/icons.jsx';
 
 const empty = { name: '', description: '', active: 1 };
 
@@ -10,9 +10,19 @@ export default function Gifts() {
   const [err, setErr] = useState('');
   const dragId = useRef(null);
   const [dragOverId, setDragOverId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const canReorder = debouncedSearch === '';
 
-  const load = () => api.adminGifts().then(setRows).catch((e) => setErr(e.message));
-  useEffect(() => { load(); }, []);
+  // Waits for a pause in typing before querying, so each keystroke doesn't
+  // fire its own request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = () => api.adminGifts(debouncedSearch).then(setRows).catch((e) => setErr(e.message));
+  useEffect(() => { load(); }, [debouncedSearch]);
 
   const remove = async (id) => {
     if (!confirm('Delete this gift?')) return;
@@ -61,6 +71,17 @@ export default function Gifts() {
       </div>
 
       <div className="card panel">
+        <div className="search" style={{ marginBottom: 18 }}>
+          <IconSearch width={18} height={18} />
+          <input placeholder="Search gifts by name or description…" value={search}
+            onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        {!canReorder && (
+          <p className="muted" style={{ marginTop: -8, marginBottom: 14, fontSize: 13 }}>
+            Clear the search to drag rows and reorder the catalogue.
+          </p>
+        )}
+
         <table className="tbl">
           <thead>
             <tr><th></th><th>Image</th><th>Name</th><th>Description</th><th>Status</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
@@ -69,14 +90,14 @@ export default function Gifts() {
             {rows.map((g) => (
               <tr key={g.id}
                 className={dragOverId === g.id ? 'drag-over' : ''}
-                draggable
+                draggable={canReorder}
                 onDragStart={onDragStart(g.id)}
                 onDragOver={onDragOver(g.id)}
                 onDragLeave={() => setDragOverId((id) => (id === g.id ? null : id))}
                 onDrop={onDrop(g.id)}
                 onDragEnd={() => { dragId.current = null; setDragOverId(null); }}
               >
-                <td className="drag-handle" title="Drag to reorder">⠿</td>
+                <td className="drag-handle" title={canReorder ? 'Drag to reorder' : undefined} style={canReorder ? undefined : { opacity: 0.3, cursor: 'default' }}>⠿</td>
                 <td>
                   <div className="gift-row-thumb">
                     {g.image_url
@@ -99,7 +120,9 @@ export default function Gifts() {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 28 }}>No gifts yet.</td></tr>
+              <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 28 }}>
+                {debouncedSearch ? 'No gifts match your search.' : 'No gifts yet.'}
+              </td></tr>
             )}
           </tbody>
         </table>

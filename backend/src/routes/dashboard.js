@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { pool } from '../db.js';
+import { cacheMiddleware } from '../middleware/cache.js';
 
 const router = Router();
 
-// GET /api/dashboard/stats
-router.get('/stats', async (_req, res) => {
+// GET /api/dashboard/stats — a 30s cache is enough to take the aggregation
+// load off repeated dashboard refreshes without the numbers going noticeably
+// stale; no explicit invalidation needed since it self-refreshes this fast.
+router.get('/stats', cacheMiddleware('dashboard', 30), async (_req, res) => {
   const [[emp]] = await pool.query('SELECT COUNT(*) AS c FROM employees');
   const [[tot]] = await pool.query('SELECT COUNT(*) AS c FROM orders WHERE deleted_at IS NULL');
   const [[pending]] = await pool.query(

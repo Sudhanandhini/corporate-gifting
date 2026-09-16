@@ -11,16 +11,26 @@ export default function Employees() {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(15);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState('');       // bound to the input, updates every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState(''); // what's actually queried
   const [modal, setModal] = useState(null); // null | {mode, data}
   const [exportOpen, setExportOpen] = useState(false);
   const [err, setErr] = useState('');
 
-  const load = () => api.employees(search, page)
+  // Waits for a pause in typing before updating the query, so each keystroke
+  // doesn't fire its own request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+  useEffect(() => { setPage(1); }, [debouncedSearch]);
+
+  const load = () => api.employees(debouncedSearch, page)
     .then((r) => { setRows(r.rows); setTotal(r.total); setPageSize(r.pageSize); })
     .catch((e) => setErr(e.message));
-  useEffect(() => { const t = setTimeout(load, 200); return () => clearTimeout(t); }, [search, page]);
-  useEffect(() => { setPage(1); }, [search]);
+  // Runs immediately once debouncedSearch/page actually change — pagination
+  // clicks aren't subject to the typing debounce above.
+  useEffect(() => { load(); }, [debouncedSearch, page]);
 
   const remove = async (id) => {
     if (!confirm('Delete this employee?')) return;

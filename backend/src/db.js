@@ -7,11 +7,35 @@ export const pool = mysql.createPool({
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'corporate_gifting',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
   dateStrings: true,
+
+  // Pool sizing — queue rather than reject once all connections are busy,
+  // with no cap on how many callers can wait (queueLimit: 0).
+  waitForConnections: true,
+  connectionLimit: Number(process.env.DB_POOL_SIZE) || 10,
+  maxIdle: Number(process.env.DB_POOL_SIZE) || 10,
+  queueLimit: 0,
+  idleTimeout: 60_000,
+
+  // Fails fast on a stuck connection attempt instead of hanging a request.
+  connectTimeout: 10_000,
+  // TCP keep-alive so idle pooled connections don't get silently dropped by
+  // a firewall/load balancer between requests, which otherwise surfaces as
+  // a confusing "Connection lost" error on the next query to reuse them.
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10_000,
 });
+
+// mysql2's pool itself never emits 'error' for anything currently in this
+// app's query patterns, but EventEmitter throws an uncaught exception if
+// 'error' is ever emitted with no listener — this is a cheap safety net.
+pool.on('error', (err) => console.error('MySQL pool error:', err));
+
+// Lets connections drain before the process exits (see index.js), instead
+// of the pool being torn down mid-query on a SIGTERM/SIGINT.
+export async function closePool() {
+  await pool.end();
+}
 
 export async function ping() {
   const conn = await pool.getConnection();
@@ -69,4 +93,30 @@ export async function ensureEmployeesEmployeeId() {
   if (cols[0].c === 0) {
     await pool.query('ALTER TABLE employees ADD COLUMN employee_id VARCHAR(40) NULL, ADD UNIQUE KEY uq_employees_employee_id (employee_id)');
   }
+}
+
+// table/indexName are always our own hardcoded call-site literals below,
+// never request input, so building the ALTER string directly is safe —
+// MySQL has no way to bind identifiers as query parameters.
+async function ensureIndex(table, indexName, columnsSql) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS c FROM information_schema.statistics
+     WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?`,
+    [table, indexName]
+  );
+  if (rows[0].c === 0) {
+    await pool.query(`ALTER TABLE ${table} ADD INDEX ${indexName} (${columnsSql})`);
+  }
+}
+
+// Adds the composite indexes matching this app's actual hot-path queries
+// (dashboard KPIs, the orders/employees dedupe & status lookups, the public
+// gift catalogue) for databases created before they existed. schema.sql
+// already has them for fresh installs; this keeps deployed databases in sync.
+export async function ensureIndexes() {
+  await ensureIndex('orders', 'idx_orders_deleted_status', 'deleted_at, status');
+  await ensureIndex('orders', 'idx_orders_deleted_created', 'deleted_at, created_at');
+  await ensureIndex('orders', 'idx_orders_client_email', 'client_email, deleted_at');
+  await ensureIndex('otp_codes', 'idx_otp_email_code', 'email, code');
+  await ensureIndex('gifts', 'idx_gifts_active_sort', 'active, sort_order');
 }

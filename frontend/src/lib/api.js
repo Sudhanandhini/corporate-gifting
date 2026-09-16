@@ -37,7 +37,7 @@ export const api = {
 
   // gifts
   gifts: () => request('/gifts'),
-  adminGifts: () => request('/gifts/admin'),
+  adminGifts: (search = '') => request(`/gifts/admin?search=${encodeURIComponent(search)}`),
   createGift: (formData) => request('/gifts', { method: 'POST', body: formData }),
   updateGift: (id, formData) => request(`/gifts/${id}`, { method: 'PUT', body: formData }),
   deleteGift: (id) => request(`/gifts/${id}`, { method: 'DELETE' }),
@@ -69,7 +69,7 @@ export const api = {
   stats: () => request('/dashboard/stats'),
 
   // reports
-  reports: () => request('/reports'),
+  reports: (page = 1) => request(`/reports?page=${encodeURIComponent(page)}`),
   exportOrders: (filters) =>
     request('/reports/export', { method: 'POST', body: JSON.stringify(filters) }),
   deleteReport: (id) => request(`/reports/${id}`, { method: 'DELETE' }),

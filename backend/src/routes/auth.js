@@ -4,13 +4,14 @@ import { sendOtpEmail, isDevMail } from '../mailer.js';
 import { issueToken } from '../authToken.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 import { MULTI_ORDER_EMAILS } from '../lib/multiOrderAllowlist.js';
+import { otpRequestLimiter, otpVerifyLimiter, adminLoginLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TTL_MIN = Number(process.env.OTP_TTL_MINUTES) || 10;
 
 // POST /api/auth/admin-login  { username, password }
-router.post('/admin-login', (req, res) => {
+router.post('/admin-login', adminLoginLimiter, (req, res) => {
   const username = String(req.body.username || '').trim();
   const password = String(req.body.password || '');
   const validUser = process.env.ADMIN_USERNAME || 'admin';
@@ -29,7 +30,7 @@ router.get('/admin-session', requireAdmin, (req, res) => {
 });
 
 // POST /api/auth/request-otp  { email }
-router.post('/request-otp', async (req, res) => {
+router.post('/request-otp', otpRequestLimiter, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) {
     return res.status(400).json({ error: 'A valid email address is required.' });
@@ -62,7 +63,7 @@ router.post('/request-otp', async (req, res) => {
 });
 
 // POST /api/auth/verify-otp  { email, code }
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', otpVerifyLimiter, async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const code = String(req.body.code || '').trim();
 

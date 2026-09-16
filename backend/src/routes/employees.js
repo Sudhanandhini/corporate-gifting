@@ -2,6 +2,7 @@ import { Router } from 'express';
 import ExcelJS from 'exceljs';
 import { pool } from '../db.js';
 import { saveReport } from '../lib/exportReport.js';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.js';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,8 +29,9 @@ const ORDER_STATUS_JOIN = `
 
 const PAGE_SIZE = 15;
 
-// GET /api/employees?search=&page=
-router.get('/', async (req, res) => {
+// GET /api/employees?search=&page= — short TTL since order status (joined
+// in from orders.js) can change independently of any employee write.
+router.get('/', cacheMiddleware('employees', 20), async (req, res) => {
   const search = `%${String(req.query.search || '').trim()}%`;
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
@@ -83,6 +85,7 @@ router.post('/export', async (req, res) => {
     sheet.getColumn('created_at').numFmt = 'yyyy-mm-dd hh:mm';
 
     const report = await saveReport(wb, { prefix: 'employees', search_filter: search || null, row_count: rows.length });
+    await invalidateCache('reports');
     res.status(201).json(report);
   } catch (err) {
     console.error('Employee export failed:', err);
@@ -109,6 +112,7 @@ router.post('/', async (req, res) => {
       'INSERT INTO employees (employee_id, first_name, last_name, email) VALUES (?, ?, ?, ?)',
       [employee_id, first_name, last_name, email]
     );
+    await invalidateCache('employees', 'dashboard');
     res.status(201).json({ id: result.insertId, employee_id, first_name, last_name, email });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -139,6 +143,7 @@ router.put('/:id', async (req, res) => {
       [employee_id, first_name, last_name, email, id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Employee not found.' });
+    await invalidateCache('employees', 'dashboard');
     res.json({ id, employee_id, first_name, last_name, email });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') {
@@ -152,6 +157,7 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const [result] = await pool.query('DELETE FROM employees WHERE id = ?', [Number(req.params.id)]);
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Employee not found.' });
+  await invalidateCache('employees', 'dashboard');
   res.json({ ok: true });
 });
 

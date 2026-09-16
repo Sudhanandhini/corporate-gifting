@@ -3,6 +3,8 @@ import { pool } from '../db.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 import { sendOrderEmails } from '../mailer.js';
 import { MULTI_ORDER_EMAILS } from '../lib/multiOrderAllowlist.js';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.js';
+import { orderCreateLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 export const STATUSES = ['Submitted', 'Processing', 'Completed', 'Cancelled'];
@@ -50,7 +52,7 @@ async function nextOrderCode(conn) {
 }
 
 // POST /api/orders  — created by the client workflow
-router.post('/', async (req, res) => {
+router.post('/', orderCreateLimiter, async (req, res) => {
   const b = req.body || {};
   const required = ['gift_name', 'recipient_name', 'last_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
   for (const f of required) {
@@ -115,6 +117,7 @@ router.post('/', async (req, res) => {
       ]
     );
     res.status(201).json({ id: result.insertId, order_code, status: 'Submitted' });
+    invalidateCache('orders', 'employees', 'dashboard').catch(() => {});
 
     // Confirmation to the client + notification to the admin inbox. Fired
     // after responding so a slow/failed SMTP call never delays or breaks
@@ -128,7 +131,7 @@ router.post('/', async (req, res) => {
 const PAGE_SIZE = 15;
 
 // GET /api/orders?search=&status=&dateFrom=&dateTo=&deleted=&page=  — admin only
-router.get('/', requireAdmin, async (req, res) => {
+router.get('/', requireAdmin, cacheMiddleware('orders', 20), async (req, res) => {
   const { where, params } = buildOrdersFilter(req.query);
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const offset = (page - 1) * PAGE_SIZE;
@@ -168,6 +171,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     Number(req.params.id),
   ]);
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Order not found.' });
+  await invalidateCache('orders', 'employees', 'dashboard');
   res.json({ id: Number(req.params.id), status });
 });
 
@@ -178,6 +182,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     [Number(req.params.id)]
   );
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Order not found.' });
+  await invalidateCache('orders', 'employees', 'dashboard');
   res.json({ id: Number(req.params.id), deleted: true });
 });
 
@@ -188,6 +193,7 @@ router.post('/:id/restore', requireAdmin, async (req, res) => {
     [Number(req.params.id)]
   );
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Deleted order not found.' });
+  await invalidateCache('orders', 'employees', 'dashboard');
   res.json({ id: Number(req.params.id), deleted: false });
 });
 
@@ -200,6 +206,7 @@ router.delete('/:id/permanent', requireAdmin, async (req, res) => {
     [Number(req.params.id)]
   );
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Removed order not found.' });
+  await invalidateCache('orders', 'employees', 'dashboard');
   res.json({ id: Number(req.params.id), permanentlyDeleted: true });
 });
 

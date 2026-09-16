@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, assetUrl } from '../lib/api.js';
 import { IconFileText, IconDownload, IconTrash } from '../lib/icons.jsx';
+import Pagination from './Pagination.jsx';
 
 const fmtDate = (s) => new Date(s).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtDateTime = (s) => new Date(s).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -14,11 +15,17 @@ const rangeLabel = (r) => {
 
 export default function Reports() {
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(15);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
-  const load = () => api.reports().then(setRows).catch((e) => setErr(e.message)).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
+  const load = () => api.reports(page)
+    .then((r) => { setRows(r.rows); setTotal(r.total); setPageSize(r.pageSize); })
+    .catch((e) => setErr(e.message))
+    .finally(() => setLoading(false));
+  useEffect(() => { load(); }, [page]);
 
   const remove = async (id) => {
     if (!confirm('Delete this report? The Excel file will be removed.')) return;
@@ -76,6 +83,8 @@ export default function Reports() {
             )}
           </tbody>
         </table>
+
+        <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
       </div>
     </>
   );

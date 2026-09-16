@@ -5,6 +5,7 @@ import ExcelJS from 'exceljs';
 import { pool } from '../db.js';
 import { buildOrdersFilter } from './orders.js';
 import { reportsDir, saveReport } from '../lib/exportReport.js';
+import { cacheMiddleware, invalidateCache } from '../middleware/cache.js';
 
 const router = Router();
 
@@ -58,13 +59,23 @@ router.post('/export', ah(async (req, res) => {
     prefix: 'orders', date_from: dateFrom, date_to: dateTo, status_filter: status,
     search_filter: search || null, row_count: rows.length,
   });
+  await invalidateCache('reports');
   res.status(201).json(report);
 }));
 
-// GET /api/reports — list generated exports, newest first
-router.get('/', ah(async (_req, res) => {
-  const [rows] = await pool.query('SELECT * FROM reports ORDER BY id DESC');
-  res.json(rows);
+const PAGE_SIZE = 15;
+
+// GET /api/reports?page= — list generated exports, newest first
+router.get('/', cacheMiddleware('reports', 30), ah(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM reports');
+  const [rows] = await pool.query(
+    'SELECT * FROM reports ORDER BY id DESC LIMIT ? OFFSET ?',
+    [PAGE_SIZE, offset]
+  );
+  res.json({ rows, total, page, pageSize: PAGE_SIZE });
 }));
 
 // DELETE /api/reports/:id — remove a generated export and its file
@@ -74,6 +85,7 @@ router.delete('/:id', ah(async (req, res) => {
   if (rows.length === 0) return res.status(404).json({ error: 'Report not found.' });
   await pool.query('DELETE FROM reports WHERE id = ?', [id]);
   fs.unlink(path.join(reportsDir, rows[0].filename), () => {});
+  await invalidateCache('reports');
   res.json({ ok: true });
 }));
 
