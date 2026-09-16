@@ -2,19 +2,23 @@ import { Router } from 'express';
 import { pool } from '../db.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 import { sendOrderEmails } from '../mailer.js';
+import { MULTI_ORDER_EMAILS } from '../lib/multiOrderAllowlist.js';
 
 const router = Router();
 export const STATUSES = ['Submitted', 'Processing', 'Completed', 'Cancelled'];
 const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 
 // Shared by the Orders list and the Excel export so both apply identical filters.
-export function buildOrdersFilter({ search = '', status = '', dateFrom = '', dateTo = '' }) {
+export function buildOrdersFilter({ search = '', status = '', dateFrom = '', dateTo = '', deleted = '' }) {
   search = `%${String(search).trim()}%`;
   status = String(status).trim();
   dateFrom = String(dateFrom).trim();
   dateTo = String(dateTo).trim();
 
-  const where = ['(o.order_code LIKE ? OR o.recipient_name LIKE ? OR o.gift_name LIKE ?)'];
+  const where = [
+    '(o.order_code LIKE ? OR o.recipient_name LIKE ? OR o.gift_name LIKE ?)',
+    String(deleted) === '1' ? 'o.deleted_at IS NOT NULL' : 'o.deleted_at IS NULL',
+  ];
   const params = [search, search, search];
 
   if (STATUSES.includes(status)) {
@@ -59,9 +63,9 @@ router.post('/', async (req, res) => {
 
   const conn = await pool.getConnection();
   try {
-    if (client_email) {
+    if (client_email && !MULTI_ORDER_EMAILS.has(client_email)) {
       const [dupe] = await conn.query(
-        'SELECT order_code FROM orders WHERE client_email = ? LIMIT 1',
+        'SELECT order_code FROM orders WHERE client_email = ? AND deleted_at IS NULL LIMIT 1',
         [client_email]
       );
       if (dupe.length > 0) {
@@ -121,19 +125,29 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/orders?search=&status=&dateFrom=&dateTo=  — admin only
+const PAGE_SIZE = 15;
+
+// GET /api/orders?search=&status=&dateFrom=&dateTo=&deleted=&page=  — admin only
 router.get('/', requireAdmin, async (req, res) => {
   const { where, params } = buildOrdersFilter(req.query);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const [[{ total }]] = await pool.query(
+    `SELECT COUNT(*) AS total FROM orders o WHERE ${where}`,
+    params
+  );
   const [rows] = await pool.query(
     `SELECT o.id, o.order_code, o.gift_name, o.quantity, o.recipient_name, o.last_name,
             o.client_email, o.phone, o.employee_id, o.entity, o.address, o.city, o.state, o.pincode,
-            o.gift_message, o.status, o.created_at
+            o.gift_message, o.status, o.created_at, o.deleted_at
        FROM orders o
       WHERE ${where}
-      ORDER BY o.id DESC`,
-    params
+      ORDER BY o.id DESC
+      LIMIT ? OFFSET ?`,
+    [...params, PAGE_SIZE, offset]
   );
-  res.json(rows);
+  res.json({ rows, total, page, pageSize: PAGE_SIZE });
 });
 
 // GET /api/orders/:id — admin only
@@ -155,6 +169,38 @@ router.put('/:id', requireAdmin, async (req, res) => {
   ]);
   if (result.affectedRows === 0) return res.status(404).json({ error: 'Order not found.' });
   res.json({ id: Number(req.params.id), status });
+});
+
+// DELETE /api/orders/:id  — admin soft-deletes an order (recoverable via restore)
+router.delete('/:id', requireAdmin, async (req, res) => {
+  const [result] = await pool.query(
+    'UPDATE orders SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL',
+    [Number(req.params.id)]
+  );
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'Order not found.' });
+  res.json({ id: Number(req.params.id), deleted: true });
+});
+
+// POST /api/orders/:id/restore  — admin undoes a soft delete
+router.post('/:id/restore', requireAdmin, async (req, res) => {
+  const [result] = await pool.query(
+    'UPDATE orders SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL',
+    [Number(req.params.id)]
+  );
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'Deleted order not found.' });
+  res.json({ id: Number(req.params.id), deleted: false });
+});
+
+// DELETE /api/orders/:id/permanent  — admin permanently erases an already-removed
+// order. Only reachable from the trash (deleted_at IS NOT NULL) so an order can't
+// be wiped without first going through the recoverable soft-delete step.
+router.delete('/:id/permanent', requireAdmin, async (req, res) => {
+  const [result] = await pool.query(
+    'DELETE FROM orders WHERE id = ? AND deleted_at IS NOT NULL',
+    [Number(req.params.id)]
+  );
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'Removed order not found.' });
+  res.json({ id: Number(req.params.id), permanentlyDeleted: true });
 });
 
 export default router;

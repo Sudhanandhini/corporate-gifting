@@ -46,19 +46,24 @@ export const api = {
   // orders
   createOrder: (payload) =>
     request('/orders', { method: 'POST', body: JSON.stringify(payload) }),
-  orders: ({ search = '', status = '', dateFrom = '', dateTo = '' } = {}) =>
-    request(`/orders?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}&dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}`),
+  orders: ({ search = '', status = '', dateFrom = '', dateTo = '', deleted = '', page = 1 } = {}) =>
+    request(`/orders?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}&dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&deleted=${encodeURIComponent(deleted)}&page=${encodeURIComponent(page)}`),
   order: (id) => request(`/orders/${id}`),
   updateOrder: (id, status) =>
     request(`/orders/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  deleteOrder: (id) => request(`/orders/${id}`, { method: 'DELETE' }),
+  restoreOrder: (id) => request(`/orders/${id}/restore`, { method: 'POST' }),
+  permanentlyDeleteOrder: (id) => request(`/orders/${id}/permanent`, { method: 'DELETE' }),
 
   // employees
-  employees: (search = '') => request(`/employees?search=${encodeURIComponent(search)}`),
+  employees: (search = '', page = 1) => request(`/employees?search=${encodeURIComponent(search)}&page=${encodeURIComponent(page)}`),
   createEmployee: (p) =>
     request('/employees', { method: 'POST', body: JSON.stringify(p) }),
   updateEmployee: (id, p) =>
     request(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(p) }),
   deleteEmployee: (id) => request(`/employees/${id}`, { method: 'DELETE' }),
+  exportEmployees: (search = '') =>
+    request('/employees/export', { method: 'POST', body: JSON.stringify({ search }) }),
 
   // dashboard
   stats: () => request('/dashboard/stats'),

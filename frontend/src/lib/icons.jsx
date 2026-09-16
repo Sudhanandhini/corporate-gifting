@@ -22,3 +22,4 @@ export const IconChevron = (p) => (<svg {...S} {...p}><path d="m6 9 6 6 6-6"/></
 export const IconDownload = (p) => (<svg {...S} {...p}><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>);
 export const IconFileText = (p) => (<svg {...S} {...p}><path d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>);
 export const IconTrash = (p) => (<svg {...S} {...p}><path d="M4 7h16M9 7V4h6v3m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13"/></svg>);
+export const IconRestore = (p) => (<svg {...S} {...p}><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>);

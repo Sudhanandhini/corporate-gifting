@@ -48,3 +48,25 @@ export async function ensureOrderCounter() {
   );
   await pool.query('INSERT IGNORE INTO order_counter (id, next_number) VALUES (1, 2000)');
 }
+
+// Adds orders.deleted_at for databases created before soft-delete existed.
+export async function ensureOrdersDeletedAt() {
+  const [cols] = await pool.query(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'orders' AND column_name = 'deleted_at'`
+  );
+  if (cols[0].c === 0) {
+    await pool.query('ALTER TABLE orders ADD COLUMN deleted_at DATETIME NULL, ADD INDEX idx_orders_deleted (deleted_at)');
+  }
+}
+
+// Adds employees.employee_id for databases created before it existed.
+export async function ensureEmployeesEmployeeId() {
+  const [cols] = await pool.query(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'employees' AND column_name = 'employee_id'`
+  );
+  if (cols[0].c === 0) {
+    await pool.query('ALTER TABLE employees ADD COLUMN employee_id VARCHAR(40) NULL, ADD UNIQUE KEY uq_employees_employee_id (employee_id)');
+  }
+}

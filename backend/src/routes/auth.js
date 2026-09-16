@@ -3,6 +3,7 @@ import { pool } from '../db.js';
 import { sendOtpEmail, isDevMail } from '../mailer.js';
 import { issueToken } from '../authToken.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { MULTI_ORDER_EMAILS } from '../lib/multiOrderAllowlist.js';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -82,18 +83,22 @@ router.post('/verify-otp', async (req, res) => {
 
   await pool.query('UPDATE otp_codes SET consumed = 1 WHERE id = ?', [rows[0].id]);
 
+  // Most emails are limited to one order, so a returning verified client is
+  // sent straight to the "already placed" screen instead of the gift flow.
+  // A short allowlist of emails is exempt and can always place another order.
+  const canOrderAgain = MULTI_ORDER_EMAILS.has(email);
   const [existing] = await pool.query(
     `SELECT order_code, gift_name, recipient_name, phone, city, state, status
-       FROM orders WHERE client_email = ? ORDER BY id DESC LIMIT 1`,
+       FROM orders WHERE client_email = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1`,
     [email]
   );
 
   const [[employee]] = await pool.query(
-    'SELECT first_name, last_name FROM employees WHERE email = ?',
+    'SELECT employee_id, first_name, last_name FROM employees WHERE email = ?',
     [email]
   );
 
-  res.json({ verified: true, email, existingOrder: existing[0] || null, employee: employee || null });
+  res.json({ verified: true, email, existingOrder: canOrderAgain ? null : (existing[0] || null), employee: employee || null });
 });
 
 export default router;

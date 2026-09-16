@@ -95,6 +95,11 @@
 .panel { padding: 20px; }
 .panel h3 { margin: 0 0 16px; font-size: 16px; }
 
+.pagination { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 18px; margin-top: 6px; border-top: 1px solid var(--line); }
+.pagination-nav { display: flex; align-items: center; gap: 14px; }
+.pagination-nav button { padding: 8px 14px; font-size: 13px; }
+.pagination-nav button:disabled { opacity: .45; cursor: not-allowed; }
+
 /* 7-day bar chart */
 .bars { display: flex; align-items: flex-end; gap: 12px; height: 150px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }

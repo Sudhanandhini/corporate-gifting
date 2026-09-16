@@ -29,7 +29,7 @@ export default function Reports() {
   return (
     <>
       <div className="main-head">
-        <div><h1>Reports</h1><div className="sub">Excel exports generated from the Orders page</div></div>
+        <div><h1>Reports</h1><div className="sub">Excel exports generated from the Orders and Employees pages</div></div>
       </div>
 
       <div className="card panel">

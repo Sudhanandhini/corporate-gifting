@@ -1,15 +1,10 @@
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import crypto from 'node:crypto';
 import ExcelJS from 'exceljs';
 import { pool } from '../db.js';
 import { buildOrdersFilter } from './orders.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const reportsDir = path.join(__dirname, '..', '..', 'uploads', 'reports');
-fs.mkdirSync(reportsDir, { recursive: true });
+import { reportsDir, saveReport } from '../lib/exportReport.js';
 
 const router = Router();
 
@@ -59,16 +54,10 @@ router.post('/export', ah(async (req, res) => {
   rows.forEach((r) => sheet.addRow({ ...r, created_at: new Date(r.created_at) }));
   sheet.getColumn('created_at').numFmt = 'yyyy-mm-dd hh:mm';
 
-  const filename = `orders-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.xlsx`;
-  await wb.xlsx.writeFile(path.join(reportsDir, filename));
-  const file_url = `/uploads/reports/${filename}`;
-
-  const [result] = await pool.query(
-    `INSERT INTO reports (filename, file_url, date_from, date_to, status_filter, search_filter, row_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [filename, file_url, dateFrom, dateTo, status, search || null, rows.length]
-  );
-  const [[report]] = await pool.query('SELECT * FROM reports WHERE id = ?', [result.insertId]);
+  const report = await saveReport(wb, {
+    prefix: 'orders', date_from: dateFrom, date_to: dateTo, status_filter: status,
+    search_filter: search || null, row_count: rows.length,
+  });
   res.status(201).json(report);
 }));
 

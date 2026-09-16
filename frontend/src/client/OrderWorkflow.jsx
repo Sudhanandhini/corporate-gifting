@@ -110,9 +110,10 @@ export default function OrderWorkflow() {
       )}
       <div className="wf-shell">
         <header className="wf-head">
-          <span className="pill">Process Overview</span>
+          {/* <span className="pill">Process Overview</span> */}
+           <img src={logo} alt="Randstad" className="wf-logo" />
           <h1 className="wf-title">
-            <img src={logo} alt="Randstad" className="wf-logo" /> <span className="gold">Seasonal Gifts 2026</span>
+            <span className="gold">Season of Happiness</span>
           </h1>
           {/* <p className="wf-sub">
             Secure Email Verification → Gift Selection → Recipient Details → Confirmation → Order Completion
@@ -156,6 +157,7 @@ export default function OrderWorkflow() {
                     ...d,
                     recipient_name: r.employee.first_name || '',
                     last_name: r.employee.last_name || '',
+                    employee_id: r.employee.employee_id || '',
                   }));
                 }
                 if (r.existingOrder) {
@@ -189,14 +191,38 @@ export default function OrderWorkflow() {
 
         {step === 4 && (
           <StepDelivery
-            delivery={delivery} setDelivery={setDelivery} error={error} setError={setError}
+            delivery={delivery} setDelivery={setDelivery} error={error} setError={setError} busy={busy}
             onBack={() => setStep(3)}
-            onReview={() => {
+            onReview={async () => {
               setError('');
               const req = ['recipient_name', 'last_name', 'phone', 'employee_id', 'entity', 'address', 'city', 'state', 'pincode'];
               if (req.some((f) => !delivery[f].trim())) { setError('Please fill in all required (*) fields.'); return; }
               if (delivery.phone.length !== 10) { setError('Phone number must be exactly 10 digits.'); return; }
               if (delivery.pincode.length !== 6) { setError('Pincode must be exactly 6 digits.'); return; }
+              setBusy(true);
+              try {
+                const r = await fetch(`https://api.postalpincode.in/pincode/${delivery.pincode}`);
+                const data = await r.json();
+                const offices = data?.[0]?.PostOffice;
+                if (offices?.length) {
+                  const enteredState = delivery.state.trim().toLowerCase();
+                  const enteredCity = delivery.city.trim().toLowerCase();
+                  const stateMatch = offices.some((po) => po.State.toLowerCase() === enteredState);
+                  if (!stateMatch) {
+                    setError(`Pincode ${delivery.pincode} belongs to ${offices[0].State}, not ${delivery.state}. Please correct the Pincode, City or State.`);
+                    setBusy(false);
+                    return;
+                  }
+                  const cityMatch = offices.some((po) => [po.District, po.Name, po.Block].filter(Boolean)
+                    .some((n) => n.toLowerCase().includes(enteredCity) || enteredCity.includes(n.toLowerCase())));
+                  if (!cityMatch) {
+                    setError(`Pincode ${delivery.pincode} does not match the city "${delivery.city}". Please correct the Pincode, City or State.`);
+                    setBusy(false);
+                    return;
+                  }
+                }
+              } catch { /* lookup unavailable — don't block submission */ }
+              setBusy(false);
               setStep(5);
             }}
           />
@@ -330,29 +356,9 @@ function giftImages(g) {
   return g?.image_url ? [{ url: g.image_url, title: null }] : [];
 }
 
-const SLIDE_INTERVAL_MS = 3000;
-
 function ImageSlider({ images, alt, className = '', onIndexChange, showThumbnails = false }) {
   const [idx, setIdx] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const [visible, setVisible] = useState(true);
   const rootRef = useRef(null);
-
-  // Only auto-advance while the slider is actually on screen, so off-screen
-  // gift tiles in a long grid don't keep re-rendering (and janking scroll).
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') return;
-    const obs = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.1 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (images.length <= 1 || paused || !visible) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % images.length), SLIDE_INTERVAL_MS);
-    return () => clearInterval(t);
-  }, [images.length, paused, visible]);
 
   useEffect(() => { onIndexChange?.(idx); }, [idx, onIndexChange]);
 
@@ -366,8 +372,7 @@ function ImageSlider({ images, alt, className = '', onIndexChange, showThumbnail
   const current = images[idx];
   const withThumbs = showThumbnails && images.length > 1;
   const slider = (
-    <div ref={rootRef} className={`img-slider ${className}`}
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <div ref={rootRef} className={`img-slider ${className}`}>
       <img src={assetUrl(current.url)} alt={current.title || alt} />
       {(current.title || (images.length > 1 && !withThumbs)) && (
         <div className="img-slider-bottom">
@@ -436,7 +441,13 @@ function StepGiftCollection({ gifts, onSelect }) {
       <div className="gift-grid mt-lg">
         {gifts.map((g) => (
           <div className="gift-tile" key={g.id}>
-            <ImageSlider images={giftImages(g)} alt={g.name} className="gift-thumb" />
+            {giftImages(g).length ? (
+              <div className="img-slider gift-thumb">
+                <img src={assetUrl(giftImages(g)[0].url)} alt={g.name} />
+              </div>
+            ) : (
+              <div className="img-slider gift-thumb"><IconGift width={26} height={26} /></div>
+            )}
             <div className="gift-name">{g.name}</div>
             <p className="gift-desc">{g.description}</p>
             <span className="gift-viewmore" onClick={() => setPreviewGift(g)}>View More</span>
@@ -482,7 +493,7 @@ function StepSelectGift({ gift, onConfirm, onBack }) {
 }
 
 /* ---------- Step 5: Delivery Details ---------- */
-function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
+function StepDelivery({ delivery, setDelivery, onReview, onBack, error, busy }) {
   const f = (k) => (e) => setDelivery((d) => ({ ...d, [k]: e.target.value }));
   const fLetters = (k) => (e) => {
     const v = e.target.value.replace(/[^A-Za-z\s]/g, '');
@@ -492,16 +503,40 @@ function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
     const v = e.target.value.replace(/\D/g, '').slice(0, maxLen);
     setDelivery((d) => ({ ...d, [k]: v }));
   };
+  const fAlphaNum = (k, maxLen) => (e) => {
+    const v = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, maxLen);
+    setDelivery((d) => ({ ...d, [k]: v }));
+  };
+
+  // Auto-fill city/state once the pincode is fully typed.
+  useEffect(() => {
+    if (delivery.pincode.length !== 6) return;
+    let cancelled = false;
+    fetch(`https://api.postalpincode.in/pincode/${delivery.pincode}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const po = data?.[0]?.PostOffice?.[0];
+        if (!po) return;
+        const matchedState = INDIAN_STATES.find(
+          (s) => s.toLowerCase() === po.State.toLowerCase()
+        ) || po.State;
+        setDelivery((d) => ({ ...d, city: po.District || d.city, state: matchedState || d.state }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [delivery.pincode]);
+
   return (
     <section className="card wf-card">
       <StepHead icon={<IconPin />} kicker="Step 05" name="Delivery Details" num="05" />
       <div className="wf-row">
-        <input className="field" placeholder="Full Name *" value={delivery.recipient_name} onChange={fLetters('recipient_name')} />
-          <input className="field" placeholder="Last Name *" value={delivery.last_name} onChange={fLetters('last_name')} />
+        <input className="field" placeholder="Full Name *" value={delivery.recipient_name} onChange={fLetters('recipient_name')} readOnly={!!delivery.recipient_name} />
+          <input className="field" placeholder="Last Name *" value={delivery.last_name} onChange={fLetters('last_name')} readOnly={!!delivery.last_name} />
 
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
-        <input className="field" placeholder="Employee ID *" value={delivery.employee_id} onChange={f('employee_id')} />
+        <input className="field" placeholder="Employee ID *" value={delivery.employee_id} onChange={fAlphaNum('employee_id', 10)} maxLength={10} readOnly={!!delivery.employee_id} />
         <select className="field" value={delivery.entity} onChange={f('entity')}>
           <option value="">Select Entity *</option>
           {ENTITIES.map((e) => <option key={e} value={e}>{e}</option>)}
@@ -509,26 +544,30 @@ function StepDelivery({ delivery, setDelivery, onReview, onBack, error }) {
       </div>
       <div className="wf-row" style={{ marginTop: 14 }}>
          <input className="field" placeholder="Phone Number *" value={delivery.phone} onChange={fDigits('phone', 10)} type="tel" inputMode="numeric" maxLength={10} />
-        <input className="field" placeholder="Email" value={delivery.client_email} onChange={f('client_email')} />
+        <input className="field" placeholder="Email" value={delivery.client_email} onChange={f('client_email')} readOnly={!!delivery.client_email} />
 
       </div>
-      <div className="wf-row" style={{ marginTop: 14 }}>
-         <input className="field" placeholder="Address *" value={delivery.address} onChange={f('address')} />
-        <input className="field" placeholder="City *" value={delivery.city} onChange={fLetters('city')} />
 
-      </div>
-      <div className="wf-row" style={{ marginTop: 14 }}>
-          <select className="field" value={delivery.state} onChange={f('state')}>
+           <div className="wf-row" style={{ marginTop: 14 }}>
+         
+        <input className="field" placeholder="Pincode *" value={delivery.pincode} onChange={fDigits('pincode', 6)} type="tel" inputMode="numeric" maxLength={6} />
+ <select className="field" value={delivery.state} onChange={f('state')}>
             <option value="">Select State *</option>
             {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-        <input className="field" placeholder="Pincode *" value={delivery.pincode} onChange={fDigits('pincode', 6)} type="tel" inputMode="numeric" maxLength={6} />
-
       </div>
+      <div className="wf-row" style={{ marginTop: 14 }}>
+        
+        <input className="field" placeholder="City *" value={delivery.city} onChange={fLetters('city')} />
+       <input className="field" placeholder="Address *" value={delivery.address} onChange={f('address')} />
+      </div>
+ 
       {error && <p className="error-text mt-lg">{error}</p>}
       <div className="btn-row mt-lg">
-        <button className="btn1 btn-outline" onClick={onBack}>Back</button>
-        <button className="btn1 btn-navy" onClick={onReview}>Review &amp; Confirm</button>
+        <button className="btn1 btn-outline" onClick={onBack} disabled={busy}>Back</button>
+        <button className="btn1 btn-navy" onClick={onReview} disabled={busy}>
+          {busy ? <span className="spinner" /> : 'Review & Confirm'}
+        </button>
       </div>
     </section>
   );
@@ -546,9 +585,10 @@ function StepConfirm({ gift, delivery, onSubmit, onEdit, busy, error }) {
         <Row k="Phone Number" v={delivery.phone} />
         <Row k="Employee ID" v={delivery.employee_id} />
         <Row k="Entity" v={delivery.entity} />
+          <Row k="Pincode" v={delivery.pincode} />
         <Row k="Delivery Address" v={`${delivery.address}, ${delivery.city}`} />
         <Row k="State" v={delivery.state} />
-        <Row k="Pincode" v={delivery.pincode} />
+      
       </div>
       <div className="callout mt-lg">
         ⚠ Please check your phone number and delivery address carefully before submitting.

@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
-import { IconSearch, IconFilter, IconCalendar, IconDownload } from '../lib/icons.jsx';
+import { IconSearch, IconFilter, IconCalendar, IconDownload, IconTrash } from '../lib/icons.jsx';
+import Pagination from './Pagination.jsx';
 
 const STATUSES = ['Submitted', 'Processing', 'Completed', 'Cancelled'];
 const shortDate = (s) => new Date(s).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 
 export default function Orders() {
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [pageSize, setPageSize] = useState(15);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -19,9 +23,35 @@ export default function Orders() {
   const [bulkStatus, setBulkStatus] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [trash, setTrash] = useState(false);   // false = active orders, true = removed orders
+  const [rowBusyId, setRowBusyId] = useState(null);
 
-  const load = () => api.orders({ search, status, dateFrom, dateTo }).then((r) => { setRows(r); setSelectedIds(new Set()); }).catch((e) => setErr(e.message));
-  useEffect(() => { const t = setTimeout(load, 200); return () => clearTimeout(t); }, [search, status, dateFrom, dateTo]);
+  const load = () => api.orders({ search, status, dateFrom, dateTo, deleted: trash ? 1 : 0, page })
+    .then((r) => { setRows(r.rows); setTotal(r.total); setPageSize(r.pageSize); setSelectedIds(new Set()); })
+    .catch((e) => setErr(e.message));
+  useEffect(() => { const t = setTimeout(load, 200); return () => clearTimeout(t); }, [search, status, dateFrom, dateTo, trash, page]);
+  // Filter/view changes invalidate the current page — jump back to page 1.
+  useEffect(() => { setPage(1); }, [search, status, dateFrom, dateTo, trash]);
+
+  const removeOrder = async (order) => {
+    if (!confirm(`Remove order #${order.order_code}? You can restore it later from Removed Orders.`)) return;
+    setRowBusyId(order.id); setErr('');
+    try { await api.deleteOrder(order.id); load(); }
+    catch (e) { setErr(e.message); } finally { setRowBusyId(null); }
+  };
+
+  const restoreOrder = async (order) => {
+    setRowBusyId(order.id); setErr('');
+    try { await api.restoreOrder(order.id); load(); }
+    catch (e) { setErr(e.message); } finally { setRowBusyId(null); }
+  };
+
+  const permanentlyDeleteOrder = async (order) => {
+    if (!confirm(`Permanently delete order #${order.order_code}? This cannot be undone.`)) return;
+    setRowBusyId(order.id); setErr('');
+    try { await api.permanentlyDeleteOrder(order.id); load(); }
+    catch (e) { setErr(e.message); } finally { setRowBusyId(null); }
+  };
 
   const allSelected = rows.length > 0 && selectedIds.size === rows.length;
   const toggleSelectAll = () => setSelectedIds(allSelected ? new Set() : new Set(rows.map((o) => o.id)));
@@ -45,9 +75,20 @@ export default function Orders() {
     <>
       <div className="main-head">
         <div><h1>Orders</h1><div className="sub">Search, filter and update gift orders</div></div>
-        <button className="btn btn-navy" style={{ width: 'auto' }} onClick={() => setExportOpen(true)}>
-          <IconDownload width={16} height={16} /> Export
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            className={trash ? 'btn btn-navy' : 'btn btn-outline'}
+            style={{ width: 'auto' }}
+            onClick={() => setTrash((t) => !t)}
+          >
+            <IconTrash width={16} height={16} /> {trash ? 'Back to Orders' : 'Removed Orders'}
+          </button>
+          {!trash && (
+            <button className="btn btn-navy" style={{ width: 'auto' }} onClick={() => setExportOpen(true)}>
+              <IconDownload width={16} height={16} /> Export
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="card panel">
@@ -78,7 +119,7 @@ export default function Orders() {
 
         {err && <p className="error-text">{err}</p>}
 
-        {selectedIds.size > 0 && (
+        {!trash && selectedIds.size > 0 && (
           <div className="bulk-bar">
             <span>{selectedIds.size} selected</span>
             <div className="select">
@@ -117,15 +158,51 @@ export default function Orders() {
                 <td style={{ textAlign: 'right' }}>
                   <span className="link-navy" onClick={() => setView(o)}>View</span>
                   <span className="muted"> · </span>
-                  <span className="link-gold" onClick={() => { setErr(''); setEdit(o); }}>Edit</span>
+                  {trash ? (
+                    <>
+                      <span
+                        className="link-gold"
+                        onClick={() => rowBusyId !== o.id && restoreOrder(o)}
+                        style={rowBusyId === o.id ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+                      >
+                        {rowBusyId === o.id ? 'Restoring…' : 'Restore'}
+                      </span>
+                      <span className="muted"> · </span>
+                      <span
+                        className="link-red"
+                        onClick={() => rowBusyId !== o.id && permanentlyDeleteOrder(o)}
+                        style={rowBusyId === o.id ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+                      >
+                        {rowBusyId === o.id ? 'Deleting…' : 'Delete'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="link-gold" onClick={() => { setErr(''); setEdit(o); }}>Edit</span>
+                      <span className="muted"> · </span>
+                      <span
+                        className="link-red"
+                        onClick={() => rowBusyId !== o.id && removeOrder(o)}
+                        style={rowBusyId === o.id ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+                      >
+                        {rowBusyId === o.id ? 'Removing…' : 'Remove'}
+                      </span>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="muted" style={{ textAlign: 'center', padding: 28 }}>No orders match your filters.</td></tr>
+              <tr>
+                <td colSpan={7} className="muted" style={{ textAlign: 'center', padding: 28 }}>
+                  {trash ? 'No removed orders.' : 'No orders match your filters.'}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
+
+        <Pagination page={page} pageSize={pageSize} total={total} onChange={setPage} />
       </div>
 
       {view && <ViewModal order={view} onClose={() => setView(null)} />}

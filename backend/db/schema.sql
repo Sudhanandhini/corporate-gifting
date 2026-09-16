@@ -5,13 +5,19 @@ CREATE DATABASE IF NOT EXISTS corporate_gifting
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE corporate_gifting;
 
--- Employees: per the brief, ONLY first name, last name and email are stored.
+-- Employees. Per the original brief only first name, last name and email
+-- were stored; employee_id was added later as an admin-assigned reference
+-- code, unique when set. It's required going forward via app-level
+-- validation, but stays nullable here so employees created before the
+-- field existed aren't broken until an admin edits them in.
 CREATE TABLE IF NOT EXISTS employees (
   id          INT AUTO_INCREMENT PRIMARY KEY,
+  employee_id VARCHAR(40)  NULL,
   first_name  VARCHAR(80)  NOT NULL,
   last_name   VARCHAR(80)  NOT NULL,
   email       VARCHAR(160) NOT NULL UNIQUE,
-  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_employees_employee_id (employee_id)
 ) ENGINE=InnoDB;
 
 -- Gifts catalogue shown in the "Gift Collection" step.
@@ -67,9 +73,11 @@ CREATE TABLE IF NOT EXISTS orders (
   gift_message   VARCHAR(255) NULL,
   status         ENUM('Submitted','Processing','Completed','Cancelled') NOT NULL DEFAULT 'Submitted',
   created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at     DATETIME NULL,                         -- soft delete: set when an admin removes an order, cleared on restore
   CONSTRAINT fk_orders_gift FOREIGN KEY (gift_id) REFERENCES gifts(id) ON DELETE SET NULL,
   INDEX idx_orders_status (status),
-  INDEX idx_orders_created (created_at)
+  INDEX idx_orders_created (created_at),
+  INDEX idx_orders_deleted (deleted_at)
 ) ENGINE=InnoDB;
 
 -- Single-row atomic counter for order_code (ORD-<n>). A dedicated counter

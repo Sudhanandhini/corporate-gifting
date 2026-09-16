@@ -6,7 +6,7 @@ import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import { ping, ensureGiftsSortOrder, ensureOrderCounter } from './db.js';
+import { ping, ensureGiftsSortOrder, ensureOrderCounter, ensureOrdersDeletedAt, ensureEmployeesEmployeeId } from './db.js';
 import authRoutes from './routes/auth.js';
 import giftRoutes from './routes/gifts.js';
 import employeeRoutes from './routes/employees.js';
@@ -51,6 +51,8 @@ app.use((err, _req, res, _next) => {
 Promise.all([
   ensureGiftsSortOrder().catch((e) => console.error('Failed to ensure gifts.sort_order column:', e)),
   ensureOrderCounter().catch((e) => console.error('Failed to ensure order_counter table:', e)),
+  ensureOrdersDeletedAt().catch((e) => console.error('Failed to ensure orders.deleted_at column:', e)),
+  ensureEmployeesEmployeeId().catch((e) => console.error('Failed to ensure employees.employee_id column:', e)),
 ]).finally(() => {
   app.listen(PORT, () => {
     console.log(`API listening on http://localhost:${PORT}`);
