@@ -6,7 +6,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="icon" type="image/x-icon" href="/src/images/favi-icon.png" />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Loaded non-render-blocking: media="print" makes the browser fetch it
+         in parallel with the page instead of pausing first paint on it, then
+         onload swaps it to "all" so the fonts apply as soon as they're ready. -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    </noscript>
     <title>Corporate Gifting</title>
   </head>
   <body>

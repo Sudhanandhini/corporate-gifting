@@ -4,7 +4,7 @@ import path from 'node:path';
 import ExcelJS from 'exceljs';
 import { pool } from '../db.js';
 import { buildOrdersFilter } from './orders.js';
-import { reportsDir, saveReport } from '../lib/exportReport.js';
+import { reportsDir, createPendingReport, runReport } from '../lib/exportReport.js';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.js';
 
 const router = Router();
@@ -15,52 +15,55 @@ const router = Router();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // POST /api/reports/export  { search?, status?, dateFrom?, dateTo? }
-// Builds an .xlsx of the orders matching the given filters, saves it under
-// uploads/reports, and records it in the reports table.
+// Responds as soon as a pending report row exists — the actual query and
+// .xlsx build (the slow part for a large order list) run afterwards in the
+// background via runReport(), instead of blocking this request on them.
 router.post('/export', ah(async (req, res) => {
   const body = req.body || {};
   const { where, params, dateFrom, dateTo, status } = buildOrdersFilter(body);
   const search = String(body.search || '').trim();
 
-  const [rows] = await pool.query(
-    `SELECT o.order_code, o.recipient_name, o.last_name, o.client_email, o.phone, o.employee_id, o.entity,
-            o.gift_name, o.quantity, o.address, o.city, o.state, o.pincode,
-            o.status, o.created_at
-       FROM orders o
-      WHERE ${where}
-      ORDER BY o.id DESC`,
-    params
-  );
-
-  const wb = new ExcelJS.Workbook();
-  const sheet = wb.addWorksheet('Orders');
-  sheet.columns = [
-    { header: 'Order ID', key: 'order_code', width: 16 },
-    { header: 'Recipient Name', key: 'recipient_name', width: 22 },
-    { header: 'Last Name', key: 'last_name', width: 18 },
-    { header: 'Employee ID', key: 'employee_id', width: 16 },
-    { header: 'Entity', key: 'entity', width: 30 },
-    { header: 'Email', key: 'client_email', width: 26 },
-    { header: 'Phone', key: 'phone', width: 16 },
-    { header: 'Gift', key: 'gift_name', width: 22 },
-    // { header: 'Qty', key: 'quantity', width: 6 },
-    { header: 'Address', key: 'address', width: 30 },
-    { header: 'City', key: 'city', width: 16 },
-    { header: 'State', key: 'state', width: 16 },
-    { header: 'Pincode', key: 'pincode', width: 12 },
-    { header: 'Status', key: 'status', width: 14 },
-    { header: 'Order Date', key: 'created_at', width: 18 },
-  ];
-  sheet.getRow(1).font = { bold: true };
-  rows.forEach((r) => sheet.addRow({ ...r, created_at: new Date(r.created_at) }));
-  sheet.getColumn('created_at').numFmt = 'yyyy-mm-dd hh:mm';
-
-  const report = await saveReport(wb, {
-    prefix: 'orders', date_from: dateFrom, date_to: dateTo, status_filter: status,
-    search_filter: search || null, row_count: rows.length,
+  const report = await createPendingReport({
+    prefix: 'orders', date_from: dateFrom, date_to: dateTo, status_filter: status, search_filter: search || null,
   });
-  await invalidateCache('reports');
-  res.status(201).json(report);
+  res.status(202).json(report);
+
+  runReport(report.id, 'orders', async () => {
+    const [rows] = await pool.query(
+      `SELECT o.order_code, o.recipient_name, o.last_name, o.client_email, o.phone, o.employee_id, o.entity,
+              o.gift_name, o.quantity, o.address, o.city, o.state, o.pincode,
+              o.status, o.created_at
+         FROM orders o
+        WHERE ${where}
+        ORDER BY o.id DESC`,
+      params
+    );
+
+    const wb = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('Orders');
+    sheet.columns = [
+      { header: 'Order ID', key: 'order_code', width: 16 },
+      { header: 'Recipient Name', key: 'recipient_name', width: 22 },
+      { header: 'Last Name', key: 'last_name', width: 18 },
+      { header: 'Employee ID', key: 'employee_id', width: 16 },
+      { header: 'Entity', key: 'entity', width: 30 },
+      { header: 'Email', key: 'client_email', width: 26 },
+      { header: 'Phone', key: 'phone', width: 16 },
+      { header: 'Gift', key: 'gift_name', width: 22 },
+      // { header: 'Qty', key: 'quantity', width: 6 },
+      { header: 'Address', key: 'address', width: 30 },
+      { header: 'City', key: 'city', width: 16 },
+      { header: 'State', key: 'state', width: 16 },
+      { header: 'Pincode', key: 'pincode', width: 12 },
+      { header: 'Status', key: 'status', width: 14 },
+      { header: 'Order Date', key: 'created_at', width: 18 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+    rows.forEach((r) => sheet.addRow({ ...r, created_at: new Date(r.created_at) }));
+    sheet.getColumn('created_at').numFmt = 'yyyy-mm-dd hh:mm';
+
+    return { wb, row_count: rows.length };
+  });
 }));
 
 const PAGE_SIZE = 15;

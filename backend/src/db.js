@@ -84,6 +84,19 @@ export async function ensureOrdersDeletedAt() {
   }
 }
 
+// Adds reports.status for databases created before background report
+// generation existed. Existing rows already have a real file on disk, so
+// they default to 'ready' rather than being mistaken for in-progress.
+export async function ensureReportsStatus() {
+  const [cols] = await pool.query(
+    `SELECT COUNT(*) AS c FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'reports' AND column_name = 'status'`
+  );
+  if (cols[0].c === 0) {
+    await pool.query("ALTER TABLE reports ADD COLUMN status ENUM('pending','ready','failed') NOT NULL DEFAULT 'ready'");
+  }
+}
+
 // Adds employees.employee_id for databases created before it existed.
 export async function ensureEmployeesEmployeeId() {
   const [cols] = await pool.query(

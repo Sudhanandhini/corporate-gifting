@@ -27,6 +27,16 @@ export default function Reports() {
     .finally(() => setLoading(false));
   useEffect(() => { load(); }, [page]);
 
+  // While a report on this page is still generating in the background, poll
+  // for it to finish instead of making the admin manually refresh.
+  const hasPending = rows.some((r) => r.status === 'pending');
+  useEffect(() => {
+    if (!hasPending) return;
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasPending, page]);
+
   const remove = async (id) => {
     if (!confirm('Delete this report? The Excel file will be removed.')) return;
     await api.deleteReport(id);
@@ -44,7 +54,7 @@ export default function Reports() {
         <table className="tbl">
           <thead>
             <tr>
-              <th>Report</th><th>Date Range</th><th>Filters</th><th>Rows</th>
+              <th>Report</th><th>Date Range</th><th>Filters</th><th>Rows</th><th>Status</th>
               <th>Generated</th><th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -54,20 +64,34 @@ export default function Reports() {
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div className="gift-row-thumb"><IconFileText width={18} height={18} /></div>
-                    <span style={{ fontWeight: 700 }}>{r.filename}</span>
+                    <span style={{ fontWeight: 700 }}>
+                      {r.status === 'ready' ? r.filename : r.status === 'pending' ? 'Generating export…' : 'Export failed'}
+                    </span>
                   </div>
                 </td>
                 <td>{rangeLabel(r)}</td>
                 <td className="muted">
                   {r.status_filter || '—'}{r.search_filter ? ` · "${r.search_filter}"` : ''}
                 </td>
-                <td>{r.row_count}</td>
+                <td>{r.status === 'ready' ? r.row_count : '—'}</td>
+                <td>
+                  <span className={`status ${r.status === 'pending' ? 'processing' : r.status === 'failed' ? 'cancelled' : 'completed'}`}>
+                    {r.status === 'pending' ? 'Generating…' : r.status === 'failed' ? 'Failed' : 'Ready'}
+                  </span>
+                </td>
                 <td className="muted">{fmtDateTime(r.created_at)}</td>
                 <td style={{ textAlign: 'right' }}>
-                  <a className="link-navy" href={assetUrl(r.file_url)} download={r.filename}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <IconDownload width={14} height={14} /> Download
-                  </a>
+                  {r.status === 'ready' ? (
+                    <a className="link-navy" href={assetUrl(r.file_url)} download={r.filename}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <IconDownload width={14} height={14} /> Download
+                    </a>
+                  ) : (
+                    <span className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {r.status === 'pending' && <span className="spinner" style={{ width: 12, height: 12 }} />}
+                      {r.status === 'pending' ? 'Generating…' : 'Unavailable'}
+                    </span>
+                  )}
                   <span className="muted"> · </span>
                   <span className="link-red" onClick={() => remove(r.id)}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
@@ -77,7 +101,7 @@ export default function Reports() {
               </tr>
             ))}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="muted" style={{ textAlign: 'center', padding: 28 }}>
+              <tr><td colSpan={7} className="muted" style={{ textAlign: 'center', padding: 28 }}>
                 No reports yet. Export orders from the Orders page to generate one.
               </td></tr>
             )}

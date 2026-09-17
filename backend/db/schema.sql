@@ -94,7 +94,11 @@ CREATE TABLE IF NOT EXISTS order_counter (
 ) ENGINE=InnoDB;
 INSERT IGNORE INTO order_counter (id, next_number) VALUES (1, 2000);
 
--- Generated Excel exports of the Orders list, listed in the admin Reports section.
+-- Generated Excel exports of the Orders/Employees lists, listed in the admin
+-- Reports section. The actual query + spreadsheet build happens in the
+-- background after the export request is answered (see lib/exportReport.js),
+-- so a row starts 'pending' with a placeholder filename/file_url and flips to
+-- 'ready' (real file) or 'failed' once that finishes.
 CREATE TABLE IF NOT EXISTS reports (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   filename      VARCHAR(255) NOT NULL,
@@ -104,5 +108,6 @@ CREATE TABLE IF NOT EXISTS reports (
   status_filter VARCHAR(20) NULL,
   search_filter VARCHAR(160) NULL,
   row_count     INT NOT NULL DEFAULT 0,
+  status        ENUM('pending','ready','failed') NOT NULL DEFAULT 'ready',
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import ExcelJS from 'exceljs';
 import { pool } from '../db.js';
-import { saveReport } from '../lib/exportReport.js';
+import { createPendingReport, runReport } from '../lib/exportReport.js';
 import { cacheMiddleware, invalidateCache } from '../middleware/cache.js';
 
 const router = Router();
@@ -56,9 +56,21 @@ router.get('/', cacheMiddleware('employees', 20), async (req, res) => {
 });
 
 // POST /api/employees/export  { search? }
+// Responds as soon as a pending report row exists — the query + .xlsx build
+// run afterwards in the background via runReport(), so this request doesn't
+// block on them.
 router.post('/export', async (req, res) => {
+  const search = String((req.body || {}).search || '').trim();
+  let report;
   try {
-    const search = String((req.body || {}).search || '').trim();
+    report = await createPendingReport({ prefix: 'employees', search_filter: search || null });
+  } catch (err) {
+    console.error('Employee export failed to start:', err);
+    return res.status(500).json({ error: 'Failed to export employees.' });
+  }
+  res.status(202).json(report);
+
+  runReport(report.id, 'employees', async () => {
     const like = `%${search}%`;
     const [rows] = await pool.query(
       `SELECT e.employee_id, e.first_name, e.last_name, e.email, e.created_at,
@@ -84,13 +96,8 @@ router.post('/export', async (req, res) => {
     rows.forEach((r) => sheet.addRow({ ...r, order_status: r.order_status || 'Not Submitted', created_at: new Date(r.created_at) }));
     sheet.getColumn('created_at').numFmt = 'yyyy-mm-dd hh:mm';
 
-    const report = await saveReport(wb, { prefix: 'employees', search_filter: search || null, row_count: rows.length });
-    await invalidateCache('reports');
-    res.status(201).json(report);
-  } catch (err) {
-    console.error('Employee export failed:', err);
-    res.status(500).json({ error: 'Failed to export employees.' });
-  }
+    return { wb, row_count: rows.length };
+  });
 });
 
 // POST /api/employees   { employee_id, first_name, last_name, email }

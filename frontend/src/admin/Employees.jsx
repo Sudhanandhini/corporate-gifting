@@ -132,8 +132,8 @@ function ExportModal({ search, onClose }) {
         {done && (
           <>
             <p className="muted" style={{ marginTop: 0 }}>
-              Exported {done.row_count} employee{done.row_count === 1 ? '' : 's'} to <b>{done.filename}</b>.
-              It's saved in the Reports section.
+              Your export has started generating in the background and will appear in the
+              Reports section shortly.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
               <button className="btn btn-outline" style={{ flex: 1 }} onClick={onClose}>Close</button>

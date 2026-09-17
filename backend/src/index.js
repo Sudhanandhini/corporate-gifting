@@ -7,7 +7,7 @@ import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-import { ping, closePool, ensureGiftsSortOrder, ensureOrderCounter, ensureOrdersDeletedAt, ensureEmployeesEmployeeId, ensureIndexes } from './db.js';
+import { ping, closePool, ensureGiftsSortOrder, ensureOrderCounter, ensureOrdersDeletedAt, ensureEmployeesEmployeeId, ensureReportsStatus, ensureIndexes } from './db.js';
 import { connectRedis, isRedisReady } from './redis.js';
 import authRoutes from './routes/auth.js';
 import giftRoutes from './routes/gifts.js';
@@ -71,6 +71,7 @@ Promise.all([
   ensureOrderCounter().catch((e) => console.error('Failed to ensure order_counter table:', e)),
   ensureOrdersDeletedAt().catch((e) => console.error('Failed to ensure orders.deleted_at column:', e)),
   ensureEmployeesEmployeeId().catch((e) => console.error('Failed to ensure employees.employee_id column:', e)),
+  ensureReportsStatus().catch((e) => console.error('Failed to ensure reports.status column:', e)),
 ])
   // Runs only after the columns above exist — several of these indexes are on
   // columns (orders.deleted_at, gifts.sort_order) that those migrations add.
