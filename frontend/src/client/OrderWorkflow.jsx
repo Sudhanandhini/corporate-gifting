@@ -5,6 +5,7 @@ import {
   IconMail, IconShield, IconGift, IconPin, IconCheck, IconCheckCircle, IconLogout,
 } from '../lib/icons.jsx';
 import logo from '../images/logo.png';
+import banner from '../images/banner1.jpg';
 import './workflow.css';
 
 const RAIL = ['Email', 'Verification', 'Gift', 'Details', 'Confirm', 'Complete'];
@@ -110,14 +111,16 @@ export default function OrderWorkflow() {
       )}
       <div className="wf-shell">
         <header className="wf-head">
-          {/* <span className="pill">Process Overview</span> */}
-           <img src={logo} alt="Randstad" className="wf-logo" />
-          <h1 className="wf-title">
-            <span className="gold">Season of Happiness</span>
-          </h1>
-          {/* <p className="wf-sub">
-            Secure Email Verification → Gift Selection → Recipient Details → Confirmation → Order Completion
-          </p> */}
+          {step >= 2 ? (
+            <img src={banner} alt="Season of Happiness" className="wf-banner" />
+          ) : (
+            <>
+              <img src={logo} alt="Randstad" className="wf-logo" />
+              <h1 className="wf-title">
+                <span className="gold">Season of Happiness</span>
+              </h1>
+            </>
+          )}
         </header>
 
         {step === 0 && (
